@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UPC Barcode Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --navy: #0f2744;
+  --blue: #1a4480;
+  --accent: #e8a020;
+  --light: #f5f7fa;
+  --mid: #dde4ee;
+  --text: #1a2332;
+  --muted: #6b7a8f;
+  --success: #1a7a4a;
+  --alt: #eef3fb;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--navy); min-height: 100vh; color: var(--text); }
+
+header {
+  background: linear-gradient(135deg, var(--navy), var(--blue));
+  border-bottom: 3px solid var(--accent);
+  padding: 0 40px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 68px;
+}
+.logo-main { font-family: 'Bebas Neue', sans-serif; font-size: 26px; color: white; letter-spacing: 2px; }
+.logo-tag { font-size: 11px; color: var(--accent); font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; margin-left: 10px; }
+.badge { background: var(--accent); color: var(--navy); font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 20px; letter-spacing: 1px; }
+
+main { max-width: 880px; margin: 0 auto; padding: 36px 24px 60px; }
+
+.hero { text-align: center; padding: 40px 0 32px; }
+.hero-label { display: inline-block; background: rgba(232,160,32,0.15); color: #f0c040; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 4px 14px; border-radius: 20px; border: 1px solid rgba(232,160,32,0.3); margin-bottom: 16px; }
+.hero h1 { font-family: 'Bebas Neue', sans-serif; font-size: 50px; color: white; letter-spacing: 3px; line-height: 1.05; margin-bottom: 12px; }
+.hero p { color: #8fa3be; font-size: 15px; max-width: 500px; margin: 0 auto; line-height: 1.6; }
+
+.card { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.35); }
+.card-head { background: linear-gradient(90deg, var(--blue), #2a5fa8); padding: 16px 26px; display: flex; align-items: center; gap: 10px; }
+.card-head-icon { width: 30px; height: 30px; background: rgba(255,255,255,0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+.card-head h2 { font-size: 15px; font-weight: 600; color: white; }
+.card-head p { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 1px; }
+.card-body { padding: 28px; }
+
+.drop-zone {
+  border: 2px dashed var(--mid); border-radius: 12px; padding: 44px 32px;
+  text-align: center; cursor: pointer; background: #fafbfd;
+  transition: all 0.2s; position: relative;
+}
+.drop-zone:hover, .drop-zone.over { border-color: var(--blue); background: #f0f4fb; }
+.drop-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.drop-zone span.icon { font-size: 36px; display: block; margin-bottom: 10px; }
+.drop-zone h3 { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 5px; }
+.drop-zone p { font-size: 13px; color: var(--muted); }
+.file-badge { display: inline-block; margin-top: 8px; background: var(--mid); color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 1px; padding: 2px 10px; border-radius: 10px; text-transform: uppercase; }
+
+.status { display: none; align-items: center; gap: 12px; background: #f0f9f0; border: 1px solid #b8ddb8; border-radius: 10px; padding: 12px 16px; margin-top: 14px; }
+.status.show { display: flex; }
+.status h4 { font-size: 14px; font-weight: 600; color: var(--success); }
+.status p { font-size: 12px; color: var(--muted); margin-top: 1px; }
+
+.sample-row { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
+.sample-row span { font-size: 13px; color: var(--muted); }
+.btn-sample { background: none; border: 1.5px solid var(--mid); color: var(--muted); font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; padding: 7px 16px; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+.btn-sample:hover { border-color: var(--blue); color: var(--blue); background: #f0f4fb; }
+
+.preview { display: none; margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--mid); }
+.preview.show { display: block; }
+.preview-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.preview-head h3 { font-size: 14px; font-weight: 600; color: var(--text); }
+.count-badge { background: var(--blue); color: white; font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 20px; }
+.tbl-wrap { border: 1px solid var(--mid); border-radius: 10px; overflow: hidden; max-height: 220px; overflow-y: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: var(--navy); color: white; padding: 9px 12px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; position: sticky; top: 0; }
+td { padding: 8px 12px; border-bottom: 1px solid var(--mid); color: var(--text); }
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: var(--alt); }
+.mono { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--blue); }
+
+.actions { display: flex; gap: 10px; margin-top: 24px; }
+.btn { padding: 13px 24px; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; display: flex; align-items: center; gap: 7px; }
+.btn-primary { background: var(--accent); color: var(--navy); flex: 1; justify-content: center; }
+.btn-primary:hover:not(:disabled) { background: #f0c040; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(232,160,32,0.4); }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-secondary { background: var(--light); color: var(--muted); border: 1.5px solid var(--mid); }
+.btn-secondary:hover { background: var(--mid); color: var(--text); }
+
+.prog { display: none; margin-top: 18px; }
+.prog.show { display: block; }
+.prog-labels { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-bottom: 7px; }
+.prog-bg { height: 7px; background: var(--mid); border-radius: 10px; overflow: hidden; }
+.prog-fill { height: 100%; background: linear-gradient(90deg, var(--blue), var(--accent)); border-radius: 10px; transition: width 0.3s; width: 0%; }
+
+.output { display: none; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--mid); }
+.output.show { display: block; }
+.success-box { display: flex; align-items: center; gap: 14px; background: linear-gradient(135deg, #f0f9f0, #e8f5e8); border: 1px solid #b8ddb8; border-radius: 12px; padding: 16px 20px; margin-bottom: 18px; }
+.success-box h3 { font-size: 16px; font-weight: 700; color: var(--success); }
+.success-box p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.dl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.dl-btn { display: flex; align-items: center; gap: 12px; padding: 15px 18px; border-radius: 12px; border: 2px solid var(--mid); background: white; cursor: pointer; transition: all 0.2s; text-align: left; font-family: 'DM Sans', sans-serif; width: 100%; }
+.dl-btn:hover { border-color: var(--blue); background: #f0f4fb; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(26,68,128,0.1); }
+.dl-btn .icon { font-size: 26px; flex-shrink: 0; }
+.dl-btn strong { display: block; font-size: 14px; font-weight: 600; color: var(--text); }
+.dl-btn span { font-size: 12px; color: var(--muted); }
+
+.steps-section { margin-top: 36px; }
+.steps-section h2 { font-family: 'Bebas Neue', sans-serif; font-size: 26px; color: white; letter-spacing: 2px; margin-bottom: 16px; text-align: center; }
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.step { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 22px 18px; text-align: center; }
+.step-num { width: 34px; height: 34px; background: var(--accent); color: var(--navy); font-family: 'Bebas Neue', sans-serif; font-size: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+.step h3 { font-size: 14px; font-weight: 600; color: white; margin-bottom: 7px; }
+.step p { font-size: 13px; color: #7a94b0; line-height: 1.5; }
+
+footer { text-align: center; padding: 18px; color: #3d5470; font-size: 12px; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 36px; }
+canvas#bc { display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <span class="logo-main">UPC Barcode</span>
+    <span class="logo-tag">Generator</span>
+  </div>
+  <span class="badge">⚡ AI-Powered</span>
+</header>
+
+<main>
+  <div class="hero">
+    <span class="hero-label">Retail Operations Tool</span>
+    <h1>UPC Barcode<br>Reference Generator</h1>
+    <p>Upload any store item export. Every UPC is detected automatically and converted into a scannable barcode sheet.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-head-icon">📂</div>
+      <div>
+        <h2>Upload Item File</h2>
+        <p>Drop any Excel or CSV — UPCs detected automatically from the first sheet</p>
+      </div>
+    </div>
+    <div class="card-body">
+
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+        <span class="icon">📊</span>
+        <h3>Drop your file here</h3>
+        <p>or click to browse</p>
+        <span class="file-badge">xlsx · xls · csv</span>
+      </div>
+
+      <div class="status" id="status">
+        <span style="font-size:22px">✅</span>
+        <div>
+          <h4 id="statusTitle">File loaded</h4>
+          <p id="statusSub">Scanning...</p>
+        </div>
+      </div>
+
+      <div class="sample-row">
+        <span>No file? Try the built-in sample:</span>
+        <button class="btn-sample" onclick="loadSample()">▶ Load 5 Sample UPCs</button>
+      </div>
+
+      <div class="preview" id="preview">
+        <div class="preview-head">
+          <h3>Detected Items</h3>
+          <span class="count-badge" id="countBadge">0 items</span>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Description</th><th>SKU</th><th>Retail UPC</th></tr></thead>
+            <tbody id="previewBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-secondary" onclick="resetAll()">↩ Reset</button>
+        <button class="btn btn-primary" id="genBtn" disabled onclick="generate()">
+          ⚡ Generate Barcode Sheet
+        </button>
+      </div>
+
+      <div class="prog" id="prog">
+        <div class="prog-labels">
+          <span id="progLabel">Generating...</span>
+          <span id="progPct">0%</span>
+        </div>
+        <div class="prog-bg"><div class="prog-fill" id="progFill"></div></div>
+      </div>
+
+      <div class="output" id="output">
+        <div class="success-box">
+          <span style="font-size:30px">🎉</span>
+          <div>
+            <h3 id="outTitle">Barcodes ready!</h3>
+            <p id="outSub">All UPCs encoded and verified.</p>
+          </div>
+        </div>
+        <div class="dl-grid">
+          <button class="dl-btn" onclick="printSheet()">
+            <span class="icon">🖨️</span>
+            <div><strong>Print-Ready Sheet</strong><span>Opens in new tab → Ctrl+P</span></div>
+          </button>
+          <button class="dl-btn" onclick="exportCSV()">
+            <span class="icon">📋</span>
+            <div><strong>Export UPC Data</strong><span>Saves as CSV file</span></div>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="steps-section">
+    <h2>How It Works</h2>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><h3>Upload Your Export</h3><p>Any item list from your store system — spot checks, order guides, inventory exports.</p></div>
+      <div class="step"><div class="step-num">2</div><h3>Auto UPC Detection</h3><p>Every numeric SKU is found automatically. Leading zero and check digit added to build the full 12-digit retail UPC.</p></div>
+      <div class="step"><div class="step-num">3</div><h3>Print &amp; Scan</h3><p>Print the sheet and scan with any Honeywell or retail handheld scanner on the floor.</p></div>
+    </div>
+  </div>
+</main>
+
+<canvas id="bc"></canvas>
+<footer>UPC Barcode Generator &nbsp;·&nbsp; Retail Operations Tool</footer>
+
+<script>
+var items = [];
+var generated = [];
+
+var SAMPLE = [
+  { desc: 'Reddi Whip Original',     upcRaw: '7027223202' },
+  { desc: 'Ritz Crackers Original',  upcRaw: '4400003111' },
+  { desc: 'PICS Butter Quarters',    upcRaw: '4173537980' },
+  { desc: 'Domino Sugar Gran',       upcRaw: '4920004550' },
+  { desc: 'Pepsi 6pk Wild Cherry',   upcRaw: '1200081119' }
+];
+
+function checkDigit(s11) {
+  var d = s11.padStart(11,'0').slice(0,11).split('').map(Number);
+  var odd  = d[0]+d[2]+d[4]+d[6]+d[8]+d[10];
+  var even = d[1]+d[3]+d[5]+d[7]+d[9];
+  return (10 - ((odd*3 + even) % 10)) % 10;
+}
+
+function toUPC12(raw) {
+  var s = String(raw).replace(/\.0$/,'').replace(/\D/g,'').trim();
+  if (s.length < 8 || s.length > 13) return null;
+  var p = ('0' + s).slice(-11).padStart(11,'0');
+  return p + checkDigit(p);
+}
+
+function isUPCLike(val) {
+  var s = String(val).replace(/\.0$/,'').trim();
+  return /^\d{8,13}$/.test(s);
+}
+
+function bestDesc(row, skipIdx) {
+  var best = '';
+  for (var i=0; i<row.length; i++) {
+    if (i === skipIdx) continue;
+    var s = String(row[i]||'').trim();
+    if (s && !/^\d+(\.\d+)?$/.test(s) && s.length > best.length) best = s;
+  }
+  return best;
+}
+
+// Barcode encoding tables
+var LC = {'0':'0001101','1':'0011001','2':'0010011','3':'0111101','4':'0100011','5':'0110001','6':'0101111','7':'0111011','8':'0110111','9':'0001011'};
+var RC = {};
+Object.keys(LC).forEach(function(d) {
+  RC[d] = LC[d].split('').map(function(b){return b==='1'?'0':'1';}).join('');
+});
+
+function drawUPCA(upc12) {
+  var mw=2, bh=75, quiet=14, ge=8;
+  var bits = '101';
+  for (var i=0;i<6;i++) bits += LC[upc12[i]];
+  bits += '01010';
+  for (var i=6;i<12;i++) bits += RC[upc12[i]];
+  bits += '101';
+
+  var cv = document.getElementById('bc');
+  var tw = bits.length*mw + quiet*2;
+  var th = bh + ge + 28;
+  cv.width = tw; cv.height = th;
+
+  var ctx = cv.getContext('2d');
+  ctx.fillStyle = 'white';
+  ctx.fillRect(0,0,tw,th);
+
+  for (var i=0; i<bits.length; i++) {
+    var isG = i<3 || i>=92 || (i>=45&&i<=49);
+    ctx.fillStyle = bits[i]==='1' ? 'black' : 'white';
+    ctx.fillRect(quiet+i*mw, 4, mw, bh+(isG?ge:0));
+  }
+
+  var ty = bh+ge+5, dw=7*mw;
+  var lx = quiet+3*mw, rx = quiet+(3+42+5)*mw;
+  ctx.fillStyle = 'black';
+  ctx.font = '9px monospace';
+  ctx.fillText(upc12[0], 3, ty+11);
+  ctx.font = '11px monospace';
+  for (var i=0;i<5;i++) ctx.fillText(upc12[1+i], lx+i*dw+dw/2-4, ty+12);
+  for (var i=0;i<5;i++) ctx.fillText(upc12[6+i], rx+i*dw+dw/2-4, ty+12);
+  ctx.font = '9px monospace';
+  ctx.fillText(upc12[11], tw-10, ty+11);
+
+  return cv.toDataURL('image/png');
+}
+
+function loadSample() {
+  items = [];
+  for (var i=0; i<SAMPLE.length; i++) {
+    var upc12 = toUPC12(SAMPLE[i].upcRaw);
+    if (upc12) items.push({ desc: SAMPLE[i].desc, upcRaw: SAMPLE[i].upcRaw, upc12: upc12 });
+  }
+  document.getElementById('status').classList.add('show');
+  document.getElementById('statusTitle').textContent = 'Sample data loaded';
+  document.getElementById('statusSub').textContent = items.length + ' sample UPCs ready';
+  showPreview();
+}
+
+var dz = document.getElementById('dropZone');
+var fi = document.getElementById('fileInput');
+dz.addEventListener('dragover', function(e){e.preventDefault();dz.classList.add('over');});
+dz.addEventListener('dragleave', function(){dz.classList.remove('over');});
+dz.addEventListener('drop', function(e){e.preventDefault();dz.classList.remove('over');if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0]);});
+fi.addEventListener('change', function(e){if(e.target.files[0])handleFile(e.target.files[0]);});
+
+function handleFile(file) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var wb = XLSX.read(e.target.result, {type:'binary', raw:false});
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var data = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
+      var seen = {};
+      items = [];
+      for (var r=0; r<data.length; r++) {
+        var row = data[r];
+        for (var c=0; c<row.length; c++) {
+          var raw = String(row[c]||'').replace(/\.0$/,'').trim();
+          if (!isUPCLike(raw) || seen[raw]) continue;
+          var upc12 = toUPC12(raw);
+          if (!upc12) continue;
+          seen[raw] = true;
+          items.push({ desc: bestDesc(row, c) || raw, upcRaw: raw, upc12: upc12 });
+        }
+      }
+      document.getElementById('status').classList.add('show');
+      document.getElementById('statusTitle').textContent = file.name;
+      document.getElementById('statusSub').textContent = 'Found ' + items.length + ' unique UPCs in "' + wb.SheetNames[0] + '"';
+      showPreview();
+    } catch(err) {
+      alert('Could not read file: ' + err.message);
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+function showPreview() {
+  var tbody = document.getElementById('previewBody');
+  tbody.innerHTML = '';
+  var show = items.slice(0,10);
+  for (var i=0; i<show.length; i++) {
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td>'+(i+1)+'</td><td>'+show[i].desc+'</td><td class="mono">'+show[i].upcRaw+'</td><td class="mono">'+show[i].upc12+'</td>';
+    tbody.appendChild(tr);
+  }
+  if (items.length > 10) {
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td colspan="4" style="text-align:center;color:var(--muted);font-size:12px;padding:9px">...and '+(items.length-10)+' more items</td>';
+    tbody.appendChild(tr);
+  }
+  document.getElementById('countBadge').textContent = items.length + ' items';
+  document.getElementById('preview').classList.add('show');
+  document.getElementById('genBtn').disabled = items.length === 0;
+}
+
+function generate() {
+  if (!items.length) return;
+  document.getElementById('genBtn').disabled = true;
+  document.getElementById('prog').classList.add('show');
+  document.getElementById('output').classList.remove('show');
+  generated = [];
+
+  var i = 0;
+  function next() {
+    if (i >= items.length) {
+      document.getElementById('progFill').style.width = '100%';
+      document.getElementById('progPct').textContent = '100%';
+      document.getElementById('progLabel').textContent = 'Done!';
+      document.getElementById('outTitle').textContent = generated.length + ' barcodes generated!';
+      document.getElementById('outSub').textContent = 'Ready to print and scan on the floor.';
+      document.getElementById('output').classList.add('show');
+      document.getElementById('genBtn').disabled = false;
+      return;
+    }
+    var pct = Math.round((i/items.length)*100);
+    document.getElementById('progFill').style.width = pct+'%';
+    document.getElementById('progPct').textContent = pct+'%';
+    document.getElementById('progLabel').textContent = 'Encoding '+(i+1)+' of '+items.length+'...';
+    var barcode = drawUPCA(items[i].upc12);
+    generated.push({ desc:items[i].desc, upcRaw:items[i].upcRaw, upc12:items[i].upc12, barcode:barcode });
+    i++;
+    setTimeout(next, 0);
+  }
+  setTimeout(next, 0);
+}
+
+function printSheet() {
+  if (!generated.length) { alert('Generate barcodes first.'); return; }
+  var today = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  var rows = '';
+  for (var i=0; i<generated.length; i++) {
+    var item = generated[i];
+    var bg = i%2===0?'#fff':'#eef3fb';
+    rows += '<tr style="background:'+bg+'">'
+      +'<td style="text-align:center;color:#888;font-size:12px">'+(i+1)+'</td>'
+      +'<td>'+item.desc+'</td>'
+      +'<td style="font-family:monospace;font-size:11px;text-align:center;color:#1a4480">'+item.upcRaw+'</td>'
+      +'<td style="font-family:monospace;font-size:11px;text-align:center;color:#1a4480">'+item.upc12+'</td>'
+      +'<td style="text-align:center;padding:4px 8px"><img src="'+item.barcode+'" style="height:50px"></td>'
+      +'</tr>';
+  }
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>UPC Barcode Sheet</title>'
+    +'<style>'
+    +'body{font-family:Arial,sans-serif;margin:0;padding:0}'
+    +'.hdr{background:#0f2744;padding:16px 28px 12px;border-bottom:4px solid #e8a020}'
+    +'.hdr-t{font-size:22px;font-weight:bold;color:white;letter-spacing:1px}'
+    +'.hdr-s{font-size:11px;color:#8fa3be;margin-top:3px}'
+    +'table{width:100%;border-collapse:collapse;font-size:12px}'
+    +'th{background:#1a4480;color:white;padding:9px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.8px}'
+    +'td{padding:4px 10px;border-bottom:1px solid #dde4ee;vertical-align:middle}'
+    +'.ftr{text-align:center;font-size:10px;color:#aaa;padding:14px;border-top:1px solid #eee}'
+    +'@media print{.hdr,.hdr *,th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
+    +'</style></head><body>'
+    +'<div class="hdr"><div class="hdr-t">UPC Barcode Reference Sheet</div>'
+    +'<div class="hdr-s">Generated '+today+' &nbsp;&middot;&nbsp; '+generated.length+' items</div></div>'
+    +'<table><thead><tr>'
+    +'<th width="30">#</th><th>Item Description</th>'
+    +'<th width="110">Internal SKU</th><th width="130">Retail UPC</th><th width="190">Barcode</th>'
+    +'</tr></thead><tbody>'+rows+'</tbody></table>'
+    +'<div class="ftr">UPC Barcode Generator &nbsp;&middot;&nbsp; '+today+' &nbsp;&middot;&nbsp; '+generated.length+' items</div>'
+    +'</body></html>';
+
+  var win = window.open('','_blank');
+  if (!win) { alert('Pop-ups are blocked. Please allow pop-ups for this page and try again.'); return; }
+  win.document.write(html);
+  win.document.close();
+}
+
+function exportCSV() {
+  if (!generated.length) { alert('Generate barcodes first.'); return; }
+  var csv = 'Item Description,Internal SKU,Retail UPC (12-digit)\n';
+  for (var i=0; i<generated.length; i++) {
+    var desc = generated[i].desc.replace(/"/g,'""');
+    csv += '"'+desc+'","'+generated[i].upcRaw+'","'+generated[i].upc12+'"\n';
+  }
+  try {
+    var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'UPC_Data.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 500);
+  } catch(e) {
+    // Fallback: open in new tab
+    var win = window.open('','_blank');
+    if (win) { win.document.write('<pre style="font-family:monospace;padding:20px">'+csv+'</pre>'); win.document.close(); }
+    else { alert('Could not export. Please allow pop-ups and try again.'); }
+  }
+}
+
+function resetAll() {
+  items = []; generated = [];
+  fi.value = '';
+  document.getElementById('status').classList.remove('show');
+  document.getElementById('preview').classList.remove('show');
+  document.getElementById('prog').classList.remove('show');
+  document.getElementById('output').classList.remove('show');
+  document.getElementById('genBtn').disabled = true;
+  document.getElementById('progFill').style.width = '0%';
+}
+</script>
+</body>
+</html>
