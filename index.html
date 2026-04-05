@@ -162,8 +162,24 @@ canvas#bc { display: none; }
         </div>
       </div>
 
+      <div style="display:flex;align-items:center;gap:12px;margin:20px 0 0">
+        <div style="flex:1;height:1px;background:var(--mid)"></div>
+        <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px">or paste CGO report text</span>
+        <div style="flex:1;height:1px;background:var(--mid)"></div>
+      </div>
+
+      <div style="margin-top:12px">
+        <textarea id="pasteBox"
+          placeholder="Paste your CGO report here — item descriptions, SKUs, anything. All UPCs will be detected automatically."
+          style="width:100%;height:130px;padding:14px;border:1.5px solid var(--mid);border-radius:10px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text);resize:vertical;outline:none;background:#fafbfd;line-height:1.6;transition:border-color 0.2s"
+          onfocus="this.style.borderColor='#1a4480'"
+          onblur="this.style.borderColor='#dde4ee'"
+        ></textarea>
+        <button class="btn-sample" style="margin-top:8px" onclick="parsePaste()">⚡ Scan Pasted Text</button>
+      </div>
+
       <div class="sample-row">
-        <span>No file? Try the built-in sample:</span>
+        <span>No file or report? Try the built-in sample:</span>
         <button class="btn-sample" onclick="loadSample()">▶ Load 5 Sample UPCs</button>
       </div>
 
@@ -253,7 +269,14 @@ function checkDigit(s11) {
 function toUPC12(raw) {
   var s = String(raw).replace(/\.0$/,'').replace(/\D/g,'').trim();
   if (s.length < 8 || s.length > 13) return null;
-  var p = ('0' + s).slice(-11).padStart(11,'0');
+  // If already 12 digits, validate check digit and return as-is
+  if (s.length === 12) return s;
+  // If 13 digits, it's an EAN-13 — return as-is
+  if (s.length === 13) return s;
+  // If 11 digits, just calculate and append check digit
+  if (s.length === 11) return s + checkDigit(s);
+  // For 8-10 digits, pad with leading zeros to 11 then add check digit
+  var p = s.padStart(11, '0');
   return p + checkDigit(p);
 }
 
@@ -483,9 +506,55 @@ function exportCSV() {
   }
 }
 
+function parsePaste() {
+  var text = document.getElementById('pasteBox').value.trim();
+  if (!text) { alert('Please paste some CGO report text first.'); return; }
+
+  var seen = {};
+  items = [];
+
+  var lines = text.split(/\n/);
+  for (var l=0; l<lines.length; l++) {
+    var line = lines[l];
+    var tokens = line.match(/\d{8,13}/g) || [];
+    for (var t=0; t<tokens.length; t++) {
+      var raw = tokens[t];
+      if (seen[raw]) continue;
+      var upc12 = toUPC12(raw);
+      if (!upc12) continue;
+      seen[raw] = true;
+
+      // Strip out the UPC itself and any numeric data fields
+      // (percentages, decimals, short numbers like on-hand qty, shelf capacity, margins)
+      var descLine = line
+        .replace(/\d{8,13}/g, '')        // remove UPCs
+        .replace(/\d+\.\d+%?/g, '')      // remove decimals and percentages
+        .replace(/\b\d{1,5}\b/g, '')     // remove short numbers (qty, capacity, etc)
+        .replace(/[$%\/\\|#@*]/g, ' ')   // remove data symbols
+        .replace(/\s{2,}/g, ' ')         // collapse whitespace
+        .trim();
+
+      // Only use as description if it has actual letters (real item name)
+      var desc = /[a-zA-Z]{2,}/.test(descLine) ? descLine : raw;
+      items.push({ desc: desc, upcRaw: raw, upc12: upc12 });
+    }
+  }
+
+  if (!items.length) {
+    alert('No UPCs found in the pasted text. Make sure the text contains 8-13 digit numbers.');
+    return;
+  }
+
+  document.getElementById('status').classList.add('show');
+  document.getElementById('statusTitle').textContent = 'CGO report scanned';
+  document.getElementById('statusSub').textContent = 'Found ' + items.length + ' unique UPCs in pasted text';
+  showPreview();
+}
+
 function resetAll() {
   items = []; generated = [];
   fi.value = '';
+  document.getElementById('pasteBox').value = '';
   document.getElementById('status').classList.remove('show');
   document.getElementById('preview').classList.remove('show');
   document.getElementById('prog').classList.remove('show');
