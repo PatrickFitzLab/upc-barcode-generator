@@ -282,6 +282,8 @@ function toUPC12(raw) {
 
 function isUPCLike(val) {
   var s = String(val).replace(/\.0$/,'').trim();
+  // Handle dashed format like 77777-77777
+  s = s.replace(/-/g, '');
   return /^\d{8,13}$/.test(s);
 }
 
@@ -515,39 +517,37 @@ function parsePaste() {
 
   var lines = text.split(/\n/);
   for (var l=0; l<lines.length; l++) {
-    var line = lines[l];
-    var tokens = line.match(/\d{8,13}/g) || [];
-    for (var t=0; t<tokens.length; t++) {
-      var raw = tokens[t];
-      if (seen[raw]) continue;
-      var upc12 = toUPC12(raw);
-      if (!upc12) continue;
-      seen[raw] = true;
+    var line = lines[l].trim();
 
-      // Strip out the UPC itself and any numeric data fields
-      // (percentages, decimals, short numbers like on-hand qty, shelf capacity, margins)
-      var descLine = line
-        .replace(/\d{8,13}/g, '')        // remove UPCs
-        .replace(/\d+\.\d+%?/g, '')      // remove decimals and percentages
-        .replace(/\b\d{1,5}\b/g, '')     // remove short numbers (qty, capacity, etc)
-        .replace(/[$%\/\\|#@*]/g, ' ')   // remove data symbols
-        .replace(/\s{2,}/g, ' ')         // collapse whitespace
-        .trim();
+    // Only process lines that contain a dashed SKU like 37000-75467
+    var skuMatch = line.match(/(\d{4,7}-\d{4,7})/);
+    if (!skuMatch) continue;
 
-      // Only use as description if it has actual letters (real item name)
-      var desc = /[a-zA-Z]{2,}/.test(descLine) ? descLine : raw;
-      items.push({ desc: desc, upcRaw: raw, upc12: upc12 });
-    }
+    var raw = skuMatch[1].replace(/-/g, '');
+    if (seen[raw]) continue;
+    var upc12 = toUPC12(raw);
+    if (!upc12) continue;
+    seen[raw] = true;
+
+    // Grab everything after the SKU, then cut off at first number (qty/cost/retail/date)
+    var afterSKU = line.replace(skuMatch[1], '').replace(/\|/g, ' ').trim();
+    var desc = afterSKU
+      .replace(/-?\$?[\d]+\.?\d*.*$/, '')   // cut at first number
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+
+    if (!desc || desc.length < 2) desc = skuMatch[1];
+    items.push({ desc: desc, upcRaw: raw, upc12: upc12 });
   }
 
   if (!items.length) {
-    alert('No UPCs found in the pasted text. Make sure the text contains 8-13 digit numbers.');
+    alert('No SKUs found. Make sure the pasted text contains SKUs in XXXXX-XXXXX format.');
     return;
   }
 
   document.getElementById('status').classList.add('show');
   document.getElementById('statusTitle').textContent = 'CGO report scanned';
-  document.getElementById('statusSub').textContent = 'Found ' + items.length + ' unique UPCs in pasted text';
+  document.getElementById('statusSub').textContent = 'Found ' + items.length + ' unique SKUs in pasted text';
   showPreview();
 }
 
