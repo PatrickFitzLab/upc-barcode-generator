@@ -537,8 +537,8 @@ function parsePaste() {
       .replace(/\s{2,}/g, ' ')
       .trim();
 
-    // Skip if description has no actual letters
-    if (!desc || !/[a-zA-Z]{2,}/.test(desc)) continue;
+    // Use SKU as fallback if no description found
+    if (!desc) desc = skuMatch[1];
     items.push({ desc: desc, upcRaw: raw, upc12: upc12 });
   }
 
