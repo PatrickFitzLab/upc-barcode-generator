@@ -512,6 +512,28 @@ function parsePaste() {
   var text = document.getElementById('pasteBox').value.trim();
   if (!text) { alert('Please paste some CGO report text first.'); return; }
 
+  // CGO column headers and noise words that should never be used as descriptions
+  var NOISE = ['description', 'qty', 'cost', 'retail', 'counted', 'shelf', 'pres', 'pres.',
+               'sku', 'secondary', 'wing', 'end', 'bulk a', 'bulk', 'display type',
+               'display', 'start', 'type', 'supplier', 'major dept', 'qty on hand'];
+
+  function isNoise(str) {
+    var s = str.toLowerCase().trim();
+    for (var i=0; i<NOISE.length; i++) {
+      if (s === NOISE[i] || s === NOISE[i]+'.') return true;
+    }
+    return false;
+  }
+
+  function cleanDesc(str) {
+    // Strip trailing numeric data (qty, cost, dates etc)
+    return str
+      .replace(/\s+-?\d+\s+-?\$[\d.]+.*$/, '')
+      .replace(/\s+-?\d+\s*$/, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  }
+
   var seen = {};
   items = [];
 
@@ -519,7 +541,6 @@ function parsePaste() {
   for (var l=0; l<lines.length; l++) {
     var line = lines[l].trim();
 
-    // Match standard dashed SKU like 37000-75467
     var skuMatch = line.match(/(\d{4,7}-\d{4,7})/);
     if (!skuMatch) continue;
 
@@ -529,30 +550,30 @@ function parsePaste() {
     if (!upc12) continue;
     seen[raw] = true;
 
-    // First try to get description from same line (after the SKU)
-    var afterSKU = line.replace(skuMatch[1], '').replace(/\|/g, ' ').trim();
-    var desc = afterSKU
-      .replace(/\s+-?\d+\s+-?\$[\d.]+.*$/, '')
-      .replace(/\s+-?\d+\s*$/, '')
-      .replace(/\s{2,}/g, ' ')
-      .trim();
+    // Try same line first
+    var afterSKU = cleanDesc(line.replace(skuMatch[1], '').replace(/\|/g, ' ').trim());
+    var desc = '';
 
-    // If same line has no letters, grab the NEXT line as the description
-    if (!/[a-zA-Z]{2,}/.test(desc) && l+1 < lines.length) {
-      var nextLine = lines[l+1].trim();
-      // Only use next line if it has letters and no dashed SKU of its own
-      if (/[a-zA-Z]{2,}/.test(nextLine) && !nextLine.match(/\d{4,7}-\d{4,7}/)) {
-        // Strip any trailing numbers/costs from next line too
-        desc = nextLine
-          .replace(/\s+-?\d+\s+-?\$[\d.]+.*$/, '')
-          .replace(/\s+-?\d+\s*$/, '')
-          .replace(/\s{2,}/g, ' ')
-          .trim();
+    if (/[a-zA-Z]{2,}/.test(afterSKU) && !isNoise(afterSKU)) {
+      desc = afterSKU;
+    }
+
+    // If nothing usable on same line, check next few lines
+    if (!desc) {
+      for (var n=1; n<=3; n++) {
+        if (l+n >= lines.length) break;
+        var nextLine = cleanDesc(lines[l+n].trim());
+        if (/[a-zA-Z]{2,}/.test(nextLine) &&
+            !isNoise(nextLine) &&
+            !nextLine.match(/\d{4,7}-\d{4,7}/)) {
+          desc = nextLine;
+          break;
+        }
       }
     }
 
-    // Final fallback — still no letters, use the dashed SKU visually
-    if (!/[a-zA-Z]{2,}/.test(desc)) desc = skuMatch[1];
+    // Final fallback
+    if (!desc) desc = skuMatch[1];
 
     items.push({ desc: desc, upcRaw: raw, upc12: upc12 });
   }
