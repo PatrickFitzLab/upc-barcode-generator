@@ -532,13 +532,17 @@ function parsePaste() {
     // Grab everything after the SKU, cut off at qty/cost columns
     var afterSKU = line.replace(skuMatch[1], '').replace(/\|/g, ' ').trim();
     var desc = afterSKU
-      .replace(/\s+-?\d+\s+-?\$[\d.]+.*$/, '')   // cut at "  -3  -$77.88..." pattern
-      .replace(/\s+-?\d+\s*$/, '')                // cut trailing lone number
+      .replace(/\s+-?\d+\s+-?\$[\d.]+.*$/, '')
+      .replace(/\s+-?\d+\s*$/, '')
       .replace(/\s{2,}/g, ' ')
       .trim();
 
-    // Use SKU as fallback if no description found
-    if (!desc) desc = skuMatch[1];
+    // If desc has no letters, scan the whole line for any alphabetical text
+    if (!/[a-zA-Z]{2,}/.test(desc)) {
+      var allWords = line.match(/[a-zA-Z][a-zA-Z0-9\s,./%-]{2,}/g);
+      desc = allWords ? allWords.join(' ').trim() : skuMatch[1];
+    }
+
     items.push({ desc: desc, upcRaw: raw, upc12: upc12 });
   }
 
