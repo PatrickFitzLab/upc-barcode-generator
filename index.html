@@ -519,10 +519,11 @@ function parsePaste() {
   for (var l=0; l<lines.length; l++) {
     var line = lines[l].trim();
 
-    // Only process lines that contain a dashed SKU like 37000-75467
-    var skuMatch = line.match(/(\d{4,7}-\d{4,7})/);
+    // Match dashed SKUs: handles 7-32913-44982, 37000-75467, 6-02652-67395 etc
+    var skuMatch = line.match(/(\d{1,7}-\d{4,7}(?:-\d{4,7})?)/);
     if (!skuMatch) continue;
 
+    // Strip all dashes and combine all digit groups into one number
     var raw = skuMatch[1].replace(/-/g, '');
     if (seen[raw]) continue;
     var upc12 = toUPC12(raw);
@@ -530,8 +531,6 @@ function parsePaste() {
     seen[raw] = true;
 
     // Grab everything after the SKU, then cut off at qty/cost columns
-    // CGO format: SKU    Description    Qty    Cost    Retail    Date    Shelf
-    // Qty is always a small integer (positive or negative), Cost has $ sign
     var afterSKU = line.replace(skuMatch[1], '').replace(/\|/g, ' ').trim();
     var desc = afterSKU
       .replace(/\s+-?\d+\s+-?\$[\d.]+.*$/, '')   // cut at "  -3  -$77.88..." pattern
@@ -539,7 +538,8 @@ function parsePaste() {
       .replace(/\s{2,}/g, ' ')
       .trim();
 
-    if (!desc || desc.length < 2) desc = skuMatch[1];
+    // If description has no letters at all, it's numeric noise — skip this item
+    if (!desc || !/[a-zA-Z]{2,}/.test(desc)) continue;
     items.push({ desc: desc, upcRaw: raw, upc12: upc12 });
   }
 
