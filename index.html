@@ -519,11 +519,10 @@ function parsePaste() {
   for (var l=0; l<lines.length; l++) {
     var line = lines[l].trim();
 
-    // Match dashed SKUs: handles 7-32913-44982, 37000-75467, 6-02652-67395 etc
-    var skuMatch = line.match(/(\d{1,7}-\d{4,7}(?:-\d{4,7})?)/);
+    // Match dashed SKUs at start of line or after whitespace — prevents bleeding into adjacent text
+    var skuMatch = line.match(/(?:^|\s)(\d{1,7}-\d{4,7}(?:-\d{4,7})?)(?=\s|$)/);
     if (!skuMatch) continue;
 
-    // Strip all dashes and combine all digit groups into one number
     var raw = skuMatch[1].replace(/-/g, '');
     if (seen[raw]) continue;
     var upc12 = toUPC12(raw);
