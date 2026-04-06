@@ -519,7 +519,7 @@ function parsePaste() {
   for (var l=0; l<lines.length; l++) {
     var line = lines[l].trim();
 
-    // Match standard two-part dashed SKUs like 37000-75467 or 41735-08134
+    // Match standard dashed SKU like 37000-75467
     var skuMatch = line.match(/(\d{4,7}-\d{4,7})/);
     if (!skuMatch) continue;
 
@@ -529,7 +529,7 @@ function parsePaste() {
     if (!upc12) continue;
     seen[raw] = true;
 
-    // Grab everything after the SKU, cut off at qty/cost columns
+    // First try to get description from same line (after the SKU)
     var afterSKU = line.replace(skuMatch[1], '').replace(/\|/g, ' ').trim();
     var desc = afterSKU
       .replace(/\s+-?\d+\s+-?\$[\d.]+.*$/, '')
@@ -537,11 +537,22 @@ function parsePaste() {
       .replace(/\s{2,}/g, ' ')
       .trim();
 
-    // If desc has no letters, scan the whole line for any alphabetical text
-    if (!/[a-zA-Z]{2,}/.test(desc)) {
-      var allWords = line.match(/[a-zA-Z][a-zA-Z0-9\s,./%-]{2,}/g);
-      desc = allWords ? allWords.join(' ').trim() : skuMatch[1];
+    // If same line has no letters, grab the NEXT line as the description
+    if (!/[a-zA-Z]{2,}/.test(desc) && l+1 < lines.length) {
+      var nextLine = lines[l+1].trim();
+      // Only use next line if it has letters and no dashed SKU of its own
+      if (/[a-zA-Z]{2,}/.test(nextLine) && !nextLine.match(/\d{4,7}-\d{4,7}/)) {
+        // Strip any trailing numbers/costs from next line too
+        desc = nextLine
+          .replace(/\s+-?\d+\s+-?\$[\d.]+.*$/, '')
+          .replace(/\s+-?\d+\s*$/, '')
+          .replace(/\s{2,}/g, ' ')
+          .trim();
+      }
     }
+
+    // Final fallback — still no letters, use the dashed SKU visually
+    if (!/[a-zA-Z]{2,}/.test(desc)) desc = skuMatch[1];
 
     items.push({ desc: desc, upcRaw: raw, upc12: upc12 });
   }
