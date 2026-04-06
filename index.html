@@ -529,10 +529,13 @@ function parsePaste() {
     if (!upc12) continue;
     seen[raw] = true;
 
-    // Grab everything after the SKU, then cut off at first number (qty/cost/retail/date)
+    // Grab everything after the SKU, then cut off at qty/cost columns
+    // CGO format: SKU    Description    Qty    Cost    Retail    Date    Shelf
+    // Qty is always a small integer (positive or negative), Cost has $ sign
     var afterSKU = line.replace(skuMatch[1], '').replace(/\|/g, ' ').trim();
     var desc = afterSKU
-      .replace(/-?\$?[\d]+\.?\d*.*$/, '')   // cut at first number
+      .replace(/\s+-?\d+\s+-?\$[\d.]+.*$/, '')   // cut at "  -3  -$77.88..." pattern
+      .replace(/\s+-?\d+\s*$/, '')                // cut trailing lone number
       .replace(/\s{2,}/g, ' ')
       .trim();
 
