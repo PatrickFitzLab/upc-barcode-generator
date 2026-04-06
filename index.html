@@ -519,8 +519,8 @@ function parsePaste() {
   for (var l=0; l<lines.length; l++) {
     var line = lines[l].trim();
 
-    // Match dashed SKUs at start of line or after whitespace — prevents bleeding into adjacent text
-    var skuMatch = line.match(/(?:^|\s)(\d{1,7}-\d{4,7}(?:-\d{4,7})?)(?=\s|$)/);
+    // Match standard two-part dashed SKUs like 37000-75467 or 41735-08134
+    var skuMatch = line.match(/(\d{4,7}-\d{4,7})/);
     if (!skuMatch) continue;
 
     var raw = skuMatch[1].replace(/-/g, '');
@@ -529,7 +529,7 @@ function parsePaste() {
     if (!upc12) continue;
     seen[raw] = true;
 
-    // Grab everything after the SKU, then cut off at qty/cost columns
+    // Grab everything after the SKU, cut off at qty/cost columns
     var afterSKU = line.replace(skuMatch[1], '').replace(/\|/g, ' ').trim();
     var desc = afterSKU
       .replace(/\s+-?\d+\s+-?\$[\d.]+.*$/, '')   // cut at "  -3  -$77.88..." pattern
@@ -537,7 +537,7 @@ function parsePaste() {
       .replace(/\s{2,}/g, ' ')
       .trim();
 
-    // If description has no letters at all, it's numeric noise — skip this item
+    // Skip if description has no actual letters
     if (!desc || !/[a-zA-Z]{2,}/.test(desc)) continue;
     items.push({ desc: desc, upcRaw: raw, upc12: upc12 });
   }
