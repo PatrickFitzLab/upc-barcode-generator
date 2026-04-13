@@ -6,6 +6,7 @@
 <title>UPC Barcode Generator</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 :root {
   --navy: #0f2744;
@@ -361,21 +362,29 @@ dz.addEventListener('drop', function(e){e.preventDefault();dz.classList.remove('
 fi.addEventListener('change', function(e){if(e.target.files[0])handleFile(e.target.files[0]);});
 
 function handleFile(file) {
-  var reader = new FileReader();
   var isPPTX = file.name.toLowerCase().endsWith('.pptx');
 
-  reader.onload = function(e) {
-    try {
-      if (isPPTX) {
+  if (isPPTX) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      try {
         handlePPTX(e.target.result, file.name);
-      } else {
-        handleXLSX(e.target.result, file.name);
+      } catch(err) {
+        alert('Could not read PPTX: ' + err.message);
       }
-    } catch(err) {
-      alert('Could not read file: ' + err.message);
-    }
-  };
-  reader.readAsBinaryString(file);
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    var reader2 = new FileReader();
+    reader2.onload = function(e) {
+      try {
+        handleXLSX(e.target.result, file.name);
+      } catch(err) {
+        alert('Could not read file: ' + err.message);
+      }
+    };
+    reader2.readAsBinaryString(file);
+  }
 }
 
 function handleXLSX(data, filename) {
@@ -401,107 +410,85 @@ function handleXLSX(data, filename) {
   showPreview();
 }
 
-function handlePPTX(data, filename) {
-  // PPTX is a ZIP — use XLSX library to unzip and read slide XML
-  var zip = XLSX.read(data, {type:'binary'});
-  var allText = '';
-
-  // Extract text from all slide files (ppt/slides/slide1.xml etc)
-  Object.keys(zip.files || {}).forEach(function(name) {
-    if (name.match(/ppt\/slides\/slide\d+\.xml/)) {
-      var xml = zip.Strings ? '' : '';
-      try {
-        // Get raw file content
-        var entry = zip.files[name];
-        var content = entry ? XLSX.utils.decode_cell : '';
-        // Use JSZip-style access via XLSX
-        allText += '\n' + name;
-      } catch(e) {}
-    }
-  });
-
-  // Better approach: parse as binary and extract text runs <a:t> tags
-  var raw = data;
-  var slideTexts = [];
-  var slideRegex = /ppt\/slides\/slide\d+\.xml/g;
-
-  // Re-read using FileReader approach — extract XML text nodes
-  var zip2 = XLSX.read(data, {type:'binary'});
-  var slideNames = Object.keys(zip2.files || {}).filter(function(n){
-    return /^ppt\/slides\/slide\d+\.xml$/.test(n);
-  });
-
-  var fullText = '';
-  slideNames.forEach(function(slideName) {
-    try {
-      var xmlStr = zip2.files[slideName].asText ? zip2.files[slideName].asText() : '';
-      // Extract all <a:t>text</a:t> content
-      var matches = xmlStr.match(/<a:t[^>]*>([^<]+)<\/a:t>/g) || [];
-      matches.forEach(function(m) {
-        var t = m.replace(/<[^>]+>/g, '').trim();
-        if (t) fullText += t + '\n';
-      });
-    } catch(e) {}
-  });
-
-  if (!fullText) {
-    alert('Could not extract text from PPTX. Try copying and pasting the text manually instead.');
+function handlePPTX(arrayBuffer, filename) {
+  // Use JSZip to unzip PPTX and extract text from slide XML files
+  if (typeof JSZip === 'undefined') {
+    alert('JSZip library not loaded. Please check your internet connection.');
     return;
   }
 
-  // Now run the same SKU detection on extracted text
-  var seen = {};
-  items = [];
-  var lines = fullText.split(/\n/);
-  for (var l=0; l<lines.length; l++) {
-    var line = lines[l].trim();
-    var skuMatch = line.match(/(\d{4,7}-\d{4,7})/);
-    if (skuMatch) {
-      var rawSku = skuMatch[1].replace(/-/g, '');
-      if (!seen[rawSku]) {
-        var upc12 = toUPC12(rawSku);
-        if (upc12) {
+  JSZip.loadAsync(arrayBuffer).then(function(zip) {
+    var slideFiles = [];
+    zip.forEach(function(path, file) {
+      if (/^ppt\/slides\/slide\d+\.xml$/.test(path)) {
+        slideFiles.push(file);
+      }
+    });
+
+    if (!slideFiles.length) {
+      alert('No slides found in this PPTX file.');
+      return;
+    }
+
+    // Read all slides in parallel then process
+    var promises = slideFiles.map(function(f) { return f.async('string'); });
+    Promise.all(promises).then(function(xmlStrings) {
+      var fullText = '';
+      xmlStrings.forEach(function(xml) {
+        // Extract all text runs <a:t>...</a:t>
+        var matches = xml.match(/<a:t[^>]*>([^<]*)<\/a:t>/g) || [];
+        matches.forEach(function(m) {
+          var t = m.replace(/<[^>]+>/g, '').trim();
+          if (t) fullText += t + '\n';
+        });
+      });
+
+      if (!fullText.trim()) {
+        alert('No text found in PPTX. The file may use images instead of text.');
+        return;
+      }
+
+      // In PPTX: description and SKU are always on the same line, desc comes first
+      var seen = {};
+      items = [];
+      var lines = fullText.split(/\n/);
+      for (var l=0; l<lines.length; l++) {
+        var line = lines[l].trim();
+        var skuMatch = line.match(/(\d{4,7}-\d{4,7})/);
+        if (!skuMatch) {
+          // Also check for plain UPCs on same line
+          var plainMatch = line.match(/^(\d{8,13})\s+(.+)$/) || line.match(/^(.+?)\s+(\d{8,13})$/);
+          if (!plainMatch) continue;
+        }
+
+        if (skuMatch) {
+          var rawSku = skuMatch[1].replace(/-/g, '');
+          if (seen[rawSku]) continue;
+          var upc12 = toUPC12(rawSku);
+          if (!upc12) continue;
           seen[rawSku] = true;
-          // Look ahead for description
-          var desc = '';
-          for (var n=1; n<=3; n++) {
-            if (l+n >= lines.length) break;
-            var next = lines[l+n].trim();
-            if (/[a-zA-Z]{2,}/.test(next) && !isNoise(next) && !next.match(/\d{4,7}-\d{4,7}/)) {
-              desc = next.replace(/\s+-?\d+\s+-?\$[\d.]+.*$/, '').trim();
-              break;
-            }
+
+          // Grab everything BEFORE the SKU on the same line as description
+          var beforeSKU = line.replace(skuMatch[1], '').trim();
+          var desc = cleanDesc(beforeSKU);
+
+          // If nothing before, try after as fallback
+          if (!desc || !(/[a-zA-Z]{2,}/.test(desc)) || isNoise(desc)) {
+            desc = skuMatch[1];
           }
-          if (!desc) desc = skuMatch[1];
+
           items.push({ desc: desc, upcRaw: rawSku, upc12: upc12 });
         }
       }
-    } else if (isUPCLike(line)) {
-      // Plain UPC number on its own line
-      var rawUpc = line.replace(/\.0$/, '').trim();
-      if (!seen[rawUpc]) {
-        var upc12b = toUPC12(rawUpc);
-        if (upc12b) {
-          seen[rawUpc] = true;
-          var descB = '';
-          for (var nb=1; nb<=3; nb++) {
-            if (l+nb >= lines.length) break;
-            var nextB = lines[l+nb].trim();
-            if (/[a-zA-Z]{2,}/.test(nextB) && !isNoise(nextB)) {
-              descB = nextB; break;
-            }
-          }
-          if (!descB) descB = rawUpc;
-          items.push({ desc: descB, upcRaw: rawUpc, upc12: upc12b });
-        }
-      }
-    }
-  }
 
-  document.getElementById('status').classList.add('show');
-  document.getElementById('statusTitle').textContent = filename;
-  document.getElementById('statusSub').textContent = 'Found ' + items.length + ' unique UPCs across ' + slideNames.length + ' slides';
-  showPreview();
+      document.getElementById('status').classList.add('show');
+      document.getElementById('statusTitle').textContent = filename;
+      document.getElementById('statusSub').textContent = 'Found ' + items.length + ' unique UPCs across ' + slideFiles.length + ' slides';
+      showPreview();
+    });
+  }).catch(function(err) {
+    alert('Could not open PPTX file: ' + err.message);
+  });
 }
 
 function showPreview() {
