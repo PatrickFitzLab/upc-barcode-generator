@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root {
   --navy: #0f2744;
@@ -225,9 +226,9 @@ canvas#bc { display: none; }
             <span class="icon">🖨️</span>
             <div><strong>Print-Ready Sheet</strong><span>Opens in new tab → Ctrl+P</span></div>
           </button>
-          <button class="dl-btn" onclick="exportCSV()">
-            <span class="icon">📋</span>
-            <div><strong>Export UPC Data</strong><span>Saves as CSV file</span></div>
+          <button class="dl-btn" onclick="exportPDF()">
+            <span class="icon">📄</span>
+            <div><strong>Download PDF</strong><span>Save & send with barcodes embedded</span></div>
           </button>
         </div>
       </div>
@@ -586,30 +587,113 @@ function printSheet() {
   win.document.close();
 }
 
-function exportCSV() {
+function exportPDF() {
   if (!generated.length) { alert('Generate barcodes first.'); return; }
-  var csv = 'Item Description,Internal SKU,Retail UPC (12-digit)\n';
+  var doc = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
+  var today = new Date().toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'});
+  var pageW = 215.9, margin = 12, y = 0;
+  var colWidths = [10, 68, 30, 38, 52]; // #, desc, sku, upc, barcode
+  var rowH = 18;
+  var tableX = margin;
+
+  function drawHeader() {
+    // Navy header bar
+    doc.setFillColor(15, 32, 68);
+    doc.rect(0, 0, pageW, 22, 'F');
+    doc.setFontSize(16);
+    doc.setFont('helvetica','bold');
+    doc.setTextColor(255,255,255);
+    doc.text('UPC Barcode Reference Sheet', margin, 13);
+    doc.setFontSize(8);
+    doc.setFont('helvetica','normal');
+    doc.setTextColor(180, 200, 220);
+    doc.text('Generated ' + today + '  ·  ' + generated.length + ' items  ·  Made by Patrick Fitzgerald', margin, 19);
+    // Accent line
+    doc.setFillColor(232, 160, 32);
+    doc.rect(0, 22, pageW, 1.5, 'F');
+    y = 28;
+  }
+
+  function drawColHeaders() {
+    doc.setFillColor(26, 68, 128);
+    doc.rect(tableX, y, pageW - margin*2, 7, 'F');
+    doc.setFontSize(7);
+    doc.setFont('helvetica','bold');
+    doc.setTextColor(255,255,255);
+    var labels = ['#','Item Description','Internal SKU','Retail UPC','Barcode'];
+    var x = tableX + 2;
+    for (var c=0; c<labels.length; c++) {
+      doc.text(labels[c], x, y+5);
+      x += colWidths[c];
+    }
+    y += 7;
+  }
+
+  drawHeader();
+  drawColHeaders();
+
   for (var i=0; i<generated.length; i++) {
-    var desc = generated[i].desc.replace(/"/g,'""');
-    csv += '"'+desc+'","'+generated[i].upcRaw+'","'+generated[i].upc12+'"\n';
+    var item = generated[i];
+
+    // New page check
+    if (y + rowH > 265) {
+      doc.addPage();
+      drawHeader();
+      drawColHeaders();
+    }
+
+    // Alternating row background
+    if (i % 2 === 0) {
+      doc.setFillColor(238, 243, 251);
+      doc.rect(tableX, y, pageW - margin*2, rowH, 'F');
+    }
+
+    // Row border
+    doc.setDrawColor(220, 228, 238);
+    doc.setLineWidth(0.2);
+    doc.rect(tableX, y, pageW - margin*2, rowH);
+
+    var x = tableX + 2;
+    doc.setTextColor(50, 50, 50);
+
+    // # column
+    doc.setFontSize(7); doc.setFont('helvetica','normal');
+    doc.text(String(i+1), x, y+7);
+    x += colWidths[0];
+
+    // Description — truncate if too long
+    doc.setFontSize(7); doc.setFont('helvetica','normal');
+    var descText = item.desc.length > 38 ? item.desc.substring(0,36)+'...' : item.desc;
+    doc.text(descText, x, y+7);
+    x += colWidths[1];
+
+    // SKU
+    doc.setFont('courier','normal'); doc.setFontSize(7);
+    doc.text(item.upcRaw, x, y+7);
+    x += colWidths[2];
+
+    // Retail UPC
+    doc.setFont('courier','normal'); doc.setFontSize(7);
+    doc.text(item.upc12, x, y+7);
+    x += colWidths[3];
+
+    // Barcode image
+    try {
+      doc.addImage(item.barcode, 'PNG', x, y+1, 48, 15);
+    } catch(e) {}
+
+    y += rowH;
   }
-  try {
-    var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'UPC_Data.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(function(){ URL.revokeObjectURL(url); }, 500);
-  } catch(e) {
-    // Fallback: open in new tab
-    var win = window.open('','_blank');
-    if (win) { win.document.write('<pre style="font-family:monospace;padding:20px">'+csv+'</pre>'); win.document.close(); }
-    else { alert('Could not export. Please allow pop-ups and try again.'); }
-  }
+
+  // Footer on last page
+  doc.setFontSize(7);
+  doc.setFont('helvetica','normal');
+  doc.setTextColor(150,150,150);
+  doc.text('UPC Barcode Generator  ·  ' + today, margin, 272);
+
+  doc.save('UPC_Barcode_Reference.pdf');
 }
+
 
 // CGO column headers — never used as item descriptions
 var NOISE = ['description', 'qty', 'cost', 'retail', 'counted', 'shelf', 'pres', 'pres.',
