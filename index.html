@@ -448,37 +448,40 @@ function handlePPTX(arrayBuffer, filename) {
         return;
       }
 
-      // In PPTX: description and SKU are always on the same line, desc comes first
+      // PPTX format: text nodes are separate — UPC is a plain 10-digit number,
+      // description is the next non-numeric, non-noise text node after it
       var seen = {};
       items = [];
-      var lines = fullText.split(/\n/);
-      for (var l=0; l<lines.length; l++) {
-        var line = lines[l].trim();
-        var skuMatch = line.match(/(\d{4,7}-\d{4,7})/);
-        if (!skuMatch) {
-          // Also check for plain UPCs on same line
-          var plainMatch = line.match(/^(\d{8,13})\s+(.+)$/) || line.match(/^(.+?)\s+(\d{8,13})$/);
-          if (!plainMatch) continue;
-        }
 
-        if (skuMatch) {
-          var rawSku = skuMatch[1].replace(/-/g, '');
-          if (seen[rawSku]) continue;
-          var upc12 = toUPC12(rawSku);
-          if (!upc12) continue;
-          seen[rawSku] = true;
+      // Collect all non-empty text nodes across all slides into a flat array
+      var allTokens = [];
+      xmlStrings.forEach(function(xml) {
+        var matches = xml.match(/<a:t[^>]*>([^<]*)<\/a:t>/g) || [];
+        matches.forEach(function(m) {
+          var t = m.replace(/<[^>]+>/g, '').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').trim();
+          if (t) allTokens.push(t);
+        });
+      });
 
-          // Grab everything BEFORE the SKU on the same line as description
-          var beforeSKU = line.replace(skuMatch[1], '').trim();
-          var desc = cleanDesc(beforeSKU);
+      for (var i=0; i<allTokens.length; i++) {
+        var token = allTokens[i].replace(/\.0$/,'').trim();
+        // Check if this token is a UPC-like number (8-13 digits, no dashes)
+        if (!/^\d{8,13}$/.test(token)) continue;
+        var upc12 = toUPC12(token);
+        if (!upc12 || seen[token]) continue;
+        seen[token] = true;
 
-          // If nothing before, try after as fallback
-          if (!desc || !(/[a-zA-Z]{2,}/.test(desc)) || isNoise(desc)) {
-            desc = skuMatch[1];
+        // Find the next token that has real letters and isn't noise
+        var desc = '';
+        for (var j=i+1; j<Math.min(i+6, allTokens.length); j++) {
+          var candidate = allTokens[j].trim();
+          if (/[a-zA-Z]{2,}/.test(candidate) && !isNoise(candidate)) {
+            desc = candidate;
+            break;
           }
-
-          items.push({ desc: desc, upcRaw: rawSku, upc12: upc12 });
         }
+        if (!desc) desc = token;
+        items.push({ desc: desc, upcRaw: token, upc12: upc12 });
       }
 
       document.getElementById('status').classList.add('show');
@@ -611,7 +614,8 @@ function exportCSV() {
 // CGO column headers — never used as item descriptions
 var NOISE = ['description', 'qty', 'cost', 'retail', 'counted', 'shelf', 'pres', 'pres.',
              'sku', 'secondary', 'wing', 'end', 'bulk a', 'bulk', 'display type',
-             'display', 'start', 'type', 'supplier', 'major dept', 'qty on hand'];
+             'display', 'start', 'type', 'supplier', 'major dept', 'qty on hand',
+             'side', 'pack', 'item code', 'upc', 'proposed item groups'];
 
 function isNoise(str) {
   var s = str.toLowerCase().trim();
