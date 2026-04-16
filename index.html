@@ -247,7 +247,7 @@ canvas#bc { display: none; }
 </main>
 
 <canvas id="bc"></canvas>
-<footer>UPC Barcode Generator &nbsp;·&nbsp; Retail Operations Tool &nbsp;·&nbsp; Made by Patrick Fitzgerald</footer>
+<footer>UPC Barcode Generator &nbsp;·&nbsp; Retail Operations Tool &nbsp;·&nbsp; Made by Patrick Fitzgerald &nbsp;·&nbsp; Version 1.0.1</footer>
 
 <script>
 var items = [];
@@ -548,36 +548,57 @@ function generate() {
 function printSheet() {
   if (!generated.length) { alert('Generate barcodes first.'); return; }
   var today = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+
+  // Build two-column layout — pair up items side by side
   var rows = '';
-  for (var i=0; i<generated.length; i++) {
-    var item = generated[i];
-    var bg = i%2===0?'#fff':'#eef3fb';
-    rows += '<tr style="background:'+bg+'">'
-      +'<td style="text-align:center;color:#888;font-size:12px">'+(i+1)+'</td>'
-      +'<td>'+item.desc+'</td>'
-      +'<td style="font-family:monospace;font-size:11px;text-align:center;color:#1a4480">'+item.upcRaw+'</td>'
-      +'<td style="font-family:monospace;font-size:11px;text-align:center;color:#1a4480">'+item.upc12+'</td>'
-      +'<td style="text-align:center;padding:4px 8px"><img src="'+item.barcode+'" style="height:50px"></td>'
-      +'</tr>';
+  for (var i=0; i<generated.length; i+=2) {
+    var a = generated[i];
+    var b = generated[i+1];
+    var bg = (i/2)%2===0?'#fff':'#eef3fb';
+
+    // Left cell content
+    var leftCell = '<td style="width:50%;padding:4px 8px;border-right:1px solid #dde4ee;vertical-align:middle">'
+      +'<table style="width:100%;border-collapse:collapse">'
+      +'<tr>'
+      +'<td style="font-size:11px;color:#888;width:20px;vertical-align:middle">'+(i+1)+'</td>'
+      +'<td style="font-size:11px;vertical-align:middle">'+a.desc+'</td>'
+      +'<td style="font-family:monospace;font-size:10px;color:#1a4480;white-space:nowrap;vertical-align:middle">'+a.upc12+'</td>'
+      +'<td style="text-align:right;vertical-align:middle"><img src="'+a.barcode+'" style="height:44px"></td>'
+      +'</tr>'
+      +'</table>'
+      +'</td>';
+
+    // Right cell content (may be empty if odd number of items)
+    var rightCell = b
+      ? '<td style="width:50%;padding:4px 8px;vertical-align:middle">'
+        +'<table style="width:100%;border-collapse:collapse">'
+        +'<tr>'
+        +'<td style="font-size:11px;color:#888;width:20px;vertical-align:middle">'+(i+2)+'</td>'
+        +'<td style="font-size:11px;vertical-align:middle">'+b.desc+'</td>'
+        +'<td style="font-family:monospace;font-size:10px;color:#1a4480;white-space:nowrap;vertical-align:middle">'+b.upc12+'</td>'
+        +'<td style="text-align:right;vertical-align:middle"><img src="'+b.barcode+'" style="height:44px"></td>'
+        +'</tr>'
+        +'</table>'
+        +'</td>'
+      : '<td style="width:50%"></td>';
+
+    rows += '<tr style="background:'+bg+';border-bottom:1px solid #dde4ee">'+leftCell+rightCell+'</tr>';
   }
+
   var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>UPC Barcode Sheet</title>'
     +'<style>'
     +'body{font-family:Arial,sans-serif;margin:0;padding:0}'
     +'.hdr{background:#0f2744;padding:16px 28px 12px;border-bottom:4px solid #e8a020}'
     +'.hdr-t{font-size:22px;font-weight:bold;color:white;letter-spacing:1px}'
     +'.hdr-s{font-size:11px;color:#8fa3be;margin-top:3px}'
-    +'table{width:100%;border-collapse:collapse;font-size:12px}'
-    +'th{background:#1a4480;color:white;padding:9px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.8px}'
-    +'td{padding:4px 10px;border-bottom:1px solid #dde4ee;vertical-align:middle}'
+    +'table.main{width:100%;border-collapse:collapse}'
+    +'td{vertical-align:middle}'
     +'.ftr{text-align:center;font-size:10px;color:#aaa;padding:14px;border-top:1px solid #eee}'
-    +'@media print{.hdr,.hdr *,th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
+    +'@media print{.hdr,.hdr *{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
     +'</style></head><body>'
     +'<div class="hdr"><div class="hdr-t">UPC Barcode Reference Sheet</div>'
     +'<div class="hdr-s">Generated '+today+' &nbsp;&middot;&nbsp; '+generated.length+' items</div></div>'
-    +'<table><thead><tr>'
-    +'<th width="30">#</th><th>Item Description</th>'
-    +'<th width="110">Internal SKU</th><th width="130">Retail UPC</th><th width="190">Barcode</th>'
-    +'</tr></thead><tbody>'+rows+'</tbody></table>'
+    +'<table class="main"><tbody>'+rows+'</tbody></table>'
     +'<div class="ftr">UPC Barcode Generator &nbsp;&middot;&nbsp; '+today+' &nbsp;&middot;&nbsp; '+generated.length+' items</div>'
     +'</body></html>';
 
