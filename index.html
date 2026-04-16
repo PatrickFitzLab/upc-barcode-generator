@@ -591,105 +591,111 @@ function exportPDF() {
   if (!generated.length) { alert('Generate barcodes first.'); return; }
   var doc = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
   var today = new Date().toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'});
-  var pageW = 215.9, margin = 12, y = 0;
-  var colWidths = [10, 68, 30, 38, 52]; // #, desc, sku, upc, barcode
-  var rowH = 18;
-  var tableX = margin;
 
-  function drawHeader() {
-    // Navy header bar
+  var pageW = 215.9, pageH = 279.4, margin = 10;
+  var colGap = 6; // gap between left and right columns
+  var colW = (pageW - margin*2 - colGap) / 2; // width of each column
+  var rowH = 16;
+  var barcodeW = 44, barcodeH = 13;
+
+  // Column layout per side: #(7) | desc(?) | upc(30) | barcode(barcodeW)
+  var numW = 7, upcW = 30;
+  var descW = colW - numW - upcW - barcodeW - 6;
+
+  var headerH = 24;
+  var tableStartY = headerH + 8;
+  var colHeaderH = 7;
+  var bodyStartY = tableStartY + colHeaderH;
+
+  function drawPageHeader() {
     doc.setFillColor(15, 32, 68);
-    doc.rect(0, 0, pageW, 22, 'F');
-    doc.setFontSize(16);
-    doc.setFont('helvetica','bold');
-    doc.setTextColor(255,255,255);
-    doc.text('UPC Barcode Reference Sheet', margin, 13);
-    doc.setFontSize(8);
-    doc.setFont('helvetica','normal');
-    doc.setTextColor(180, 200, 220);
-    doc.text('Generated ' + today + '  ·  ' + generated.length + ' items  ·  Made by Patrick Fitzgerald', margin, 19);
-    // Accent line
+    doc.rect(0, 0, pageW, headerH, 'F');
     doc.setFillColor(232, 160, 32);
-    doc.rect(0, 22, pageW, 1.5, 'F');
-    y = 28;
+    doc.rect(0, headerH, pageW, 1.5, 'F');
+    doc.setFontSize(15); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+    doc.text('UPC Barcode Reference Sheet', margin, 14);
+    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(180,200,220);
+    doc.text('Generated ' + today + '  ·  ' + generated.length + ' items', margin, 21);
   }
 
-  function drawColHeaders() {
-    doc.setFillColor(26, 68, 128);
-    doc.rect(tableX, y, pageW - margin*2, 7, 'F');
-    doc.setFontSize(7);
-    doc.setFont('helvetica','bold');
-    doc.setTextColor(255,255,255);
-    var labels = ['#','Item Description','Internal SKU','Retail UPC','Barcode'];
-    var x = tableX + 2;
-    for (var c=0; c<labels.length; c++) {
-      doc.text(labels[c], x, y+5);
-      x += colWidths[c];
+  function drawColHeaders(xLeft, xRight) {
+    var cols = [xLeft, xRight];
+    for (var s=0; s<2; s++) {
+      var x = cols[s];
+      doc.setFillColor(26, 68, 128);
+      doc.rect(x, tableStartY, colW, colHeaderH, 'F');
+      doc.setFontSize(6.5); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+      doc.text('#',           x+2,              tableStartY+5);
+      doc.text('Description', x+numW+2,         tableStartY+5);
+      doc.text('Retail UPC',  x+numW+descW+4,   tableStartY+5);
+      doc.text('Barcode',     x+numW+descW+upcW+4, tableStartY+5);
     }
-    y += 7;
   }
 
-  drawHeader();
-  drawColHeaders();
+  var xLeft  = margin;
+  var xRight = margin + colW + colGap;
+
+  drawPageHeader();
+  drawColHeaders(xLeft, xRight);
+
+  var col = 0; // 0=left, 1=right
+  var y = bodyStartY;
+  var itemIndex = 0;
 
   for (var i=0; i<generated.length; i++) {
     var item = generated[i];
+    var x = col === 0 ? xLeft : xRight;
 
-    // New page check
-    if (y + rowH > 265) {
+    // New page when both columns are full
+    if (y + rowH > pageH - 12) {
       doc.addPage();
-      drawHeader();
-      drawColHeaders();
+      drawPageHeader();
+      drawColHeaders(xLeft, xRight);
+      y = bodyStartY;
+      col = 0;
+      x = xLeft;
     }
 
-    // Alternating row background
-    if (i % 2 === 0) {
+    // Alternating row shading — per column independently
+    if (itemIndex % 2 === 0) {
       doc.setFillColor(238, 243, 251);
-      doc.rect(tableX, y, pageW - margin*2, rowH, 'F');
+      doc.rect(x, y, colW, rowH, 'F');
     }
 
     // Row border
-    doc.setDrawColor(220, 228, 238);
-    doc.setLineWidth(0.2);
-    doc.rect(tableX, y, pageW - margin*2, rowH);
+    doc.setDrawColor(220, 228, 238); doc.setLineWidth(0.2);
+    doc.rect(x, y, colW, rowH);
 
-    var x = tableX + 2;
-    doc.setTextColor(50, 50, 50);
+    doc.setTextColor(50,50,50);
 
-    // # column
-    doc.setFontSize(7); doc.setFont('helvetica','normal');
-    doc.text(String(i+1), x, y+7);
-    x += colWidths[0];
+    // # 
+    doc.setFontSize(6.5); doc.setFont('helvetica','normal');
+    doc.text(String(i+1), x+2, y+7);
 
-    // Description — truncate if too long
-    doc.setFontSize(7); doc.setFont('helvetica','normal');
-    var descText = item.desc.length > 38 ? item.desc.substring(0,36)+'...' : item.desc;
-    doc.text(descText, x, y+7);
-    x += colWidths[1];
-
-    // SKU
-    doc.setFont('courier','normal'); doc.setFontSize(7);
-    doc.text(item.upcRaw, x, y+7);
-    x += colWidths[2];
+    // Description
+    var descText = item.desc.length > 26 ? item.desc.substring(0,24)+'...' : item.desc;
+    doc.setFontSize(6.5); doc.setFont('helvetica','normal');
+    doc.text(descText, x+numW+2, y+7);
 
     // Retail UPC
-    doc.setFont('courier','normal'); doc.setFontSize(7);
-    doc.text(item.upc12, x, y+7);
-    x += colWidths[3];
+    doc.setFont('courier','normal'); doc.setFontSize(6.5);
+    doc.text(item.upc12, x+numW+descW+4, y+7);
 
     // Barcode image
     try {
-      doc.addImage(item.barcode, 'PNG', x, y+1, 48, 15);
+      doc.addImage(item.barcode, 'PNG', x+numW+descW+upcW+2, y+1, barcodeW, barcodeH);
     } catch(e) {}
 
-    y += rowH;
+    // Advance column/row
+    if (col === 0) {
+      col = 1;
+    } else {
+      col = 0;
+      y += rowH;
+      itemIndex++;
+    }
+    if (col === 0) itemIndex++;
   }
-
-  // Footer on last page
-  doc.setFontSize(7);
-  doc.setFont('helvetica','normal');
-  doc.setTextColor(150,150,150);
-  doc.text('UPC Barcode Generator  ·  ' + today, margin, 272);
 
   doc.save('UPC_Barcode_Reference.pdf');
 }
