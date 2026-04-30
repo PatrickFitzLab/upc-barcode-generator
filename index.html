@@ -185,6 +185,16 @@ canvas#bc { display: none; }
         <button class="btn-sample" onclick="loadSample()">▶ Load 5 Sample UPCs</button>
       </div>
 
+      <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--mid)">
+        <label style="display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:8px">Document Header</label>
+        <input id="customHeader" type="text" placeholder="e.g. Negative Report — Week of 4/28 · Grocery Dept"
+          style="width:100%;padding:11px 14px;border:1.5px solid var(--mid);border-radius:9px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--text);outline:none;transition:border-color 0.2s;background:white"
+          onfocus="this.style.borderColor='#1a4480'"
+          onblur="this.style.borderColor='#dde4ee'"
+        >
+        <p style="font-size:12px;color:var(--muted);margin-top:6px">This will appear as the title on your printed sheet and PDF.</p>
+      </div>
+
       <div class="preview" id="preview">
         <div class="preview-head">
           <h3>Detected Items</h3>
@@ -247,7 +257,7 @@ canvas#bc { display: none; }
 </main>
 
 <canvas id="bc"></canvas>
-<footer>UPC Barcode Generator &nbsp;·&nbsp; Retail Operations Tool &nbsp;·&nbsp; Made by Patrick Fitzgerald &nbsp;·&nbsp; Version 1.0.1</footer>
+<footer>UPC Barcode Generator &nbsp;·&nbsp; Retail Operations Tool &nbsp;·&nbsp; Made by Patrick Fitzgerald &nbsp;·&nbsp; Version 1.0.2</footer>
 
 <script>
 var items = [];
@@ -548,58 +558,48 @@ function generate() {
 function printSheet() {
   if (!generated.length) { alert('Generate barcodes first.'); return; }
   var today = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  var header = document.getElementById('customHeader').value.trim() || 'UPC Barcode Reference Sheet';
 
-  // Build two-column layout — pair up items side by side
   var rows = '';
   for (var i=0; i<generated.length; i+=2) {
     var a = generated[i];
     var b = generated[i+1];
-    var bg = (i/2)%2===0?'#fff':'#eef3fb';
+    var bg = (Math.floor(i/2))%2===0?'#fff':'#eef3fb';
 
-    // Left cell content
-    var leftCell = '<td style="width:50%;padding:4px 8px;border-right:1px solid #dde4ee;vertical-align:middle">'
-      +'<table style="width:100%;border-collapse:collapse">'
-      +'<tr>'
-      +'<td style="font-size:11px;color:#888;width:20px;vertical-align:middle">'+(i+1)+'</td>'
-      +'<td style="font-size:11px;vertical-align:middle">'+a.desc+'</td>'
-      +'<td style="font-family:monospace;font-size:10px;color:#1a4480;white-space:nowrap;vertical-align:middle">'+a.upc12+'</td>'
-      +'<td style="text-align:right;vertical-align:middle"><img src="'+a.barcode+'" style="height:44px"></td>'
-      +'</tr>'
-      +'</table>'
-      +'</td>';
+    var leftCell = '<td style="width:50%;padding:5px 10px;border-right:2px solid #dde4ee;vertical-align:middle">'
+      +'<table style="width:100%;border-collapse:collapse"><tr>'
+      +'<td style="font-size:11px;color:#aaa;width:22px;vertical-align:middle">'+(i+1)+'</td>'
+      +'<td style="font-size:11px;vertical-align:middle;padding-right:6px">'+a.desc+'</td>'
+      +'<td style="text-align:right;vertical-align:middle;white-space:nowrap"><img src="'+a.barcode+'" style="height:46px"></td>'
+      +'</tr></table></td>';
 
-    // Right cell content (may be empty if odd number of items)
     var rightCell = b
-      ? '<td style="width:50%;padding:4px 8px;vertical-align:middle">'
-        +'<table style="width:100%;border-collapse:collapse">'
-        +'<tr>'
-        +'<td style="font-size:11px;color:#888;width:20px;vertical-align:middle">'+(i+2)+'</td>'
-        +'<td style="font-size:11px;vertical-align:middle">'+b.desc+'</td>'
-        +'<td style="font-family:monospace;font-size:10px;color:#1a4480;white-space:nowrap;vertical-align:middle">'+b.upc12+'</td>'
-        +'<td style="text-align:right;vertical-align:middle"><img src="'+b.barcode+'" style="height:44px"></td>'
-        +'</tr>'
-        +'</table>'
-        +'</td>'
+      ? '<td style="width:50%;padding:5px 10px;vertical-align:middle">'
+        +'<table style="width:100%;border-collapse:collapse"><tr>'
+        +'<td style="font-size:11px;color:#aaa;width:22px;vertical-align:middle">'+(i+2)+'</td>'
+        +'<td style="font-size:11px;vertical-align:middle;padding-right:6px">'+b.desc+'</td>'
+        +'<td style="text-align:right;vertical-align:middle;white-space:nowrap"><img src="'+b.barcode+'" style="height:46px"></td>'
+        +'</tr></table></td>'
       : '<td style="width:50%"></td>';
 
     rows += '<tr style="background:'+bg+';border-bottom:1px solid #dde4ee">'+leftCell+rightCell+'</tr>';
   }
 
-  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>UPC Barcode Sheet</title>'
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+header+'</title>'
     +'<style>'
     +'body{font-family:Arial,sans-serif;margin:0;padding:0}'
     +'.hdr{background:#0f2744;padding:16px 28px 12px;border-bottom:4px solid #e8a020}'
-    +'.hdr-t{font-size:22px;font-weight:bold;color:white;letter-spacing:1px}'
+    +'.hdr-t{font-size:20px;font-weight:bold;color:white;letter-spacing:1px}'
     +'.hdr-s{font-size:11px;color:#8fa3be;margin-top:3px}'
     +'table.main{width:100%;border-collapse:collapse}'
     +'td{vertical-align:middle}'
     +'.ftr{text-align:center;font-size:10px;color:#aaa;padding:14px;border-top:1px solid #eee}'
     +'@media print{.hdr,.hdr *{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
     +'</style></head><body>'
-    +'<div class="hdr"><div class="hdr-t">UPC Barcode Reference Sheet</div>'
+    +'<div class="hdr"><div class="hdr-t">'+header+'</div>'
     +'<div class="hdr-s">Generated '+today+' &nbsp;&middot;&nbsp; '+generated.length+' items</div></div>'
     +'<table class="main"><tbody>'+rows+'</tbody></table>'
-    +'<div class="ftr">UPC Barcode Generator &nbsp;&middot;&nbsp; '+today+' &nbsp;&middot;&nbsp; '+generated.length+' items</div>'
+    +'<div class="ftr">UPC Barcode Generator &nbsp;&middot;&nbsp; '+today+'</div>'
     +'</body></html>';
 
   var win = window.open('','_blank');
@@ -612,20 +612,19 @@ function exportPDF() {
   if (!generated.length) { alert('Generate barcodes first.'); return; }
   var doc = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
   var today = new Date().toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'});
+  var header = document.getElementById('customHeader').value.trim() || 'UPC Barcode Reference Sheet';
 
   var pageW = 215.9, pageH = 279.4, margin = 10;
-  var colGap = 6; // gap between left and right columns
-  var colW = (pageW - margin*2 - colGap) / 2; // width of each column
+  var colGap = 6;
+  var colW = (pageW - margin*2 - colGap) / 2;
   var rowH = 16;
-  var barcodeW = 44, barcodeH = 13;
-
-  // Column layout per side: #(7) | desc(?) | upc(30) | barcode(barcodeW)
-  var numW = 7, upcW = 30;
-  var descW = colW - numW - upcW - barcodeW - 6;
+  var barcodeW = 52, barcodeH = 13;
+  var numW = 7;
+  var descW = colW - numW - barcodeW - 4;
 
   var headerH = 24;
-  var tableStartY = headerH + 8;
-  var colHeaderH = 7;
+  var tableStartY = headerH + 6;
+  var colHeaderH = 6;
   var bodyStartY = tableStartY + colHeaderH;
 
   function drawPageHeader() {
@@ -633,24 +632,21 @@ function exportPDF() {
     doc.rect(0, 0, pageW, headerH, 'F');
     doc.setFillColor(232, 160, 32);
     doc.rect(0, headerH, pageW, 1.5, 'F');
-    doc.setFontSize(15); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
-    doc.text('UPC Barcode Reference Sheet', margin, 14);
+    doc.setFontSize(13); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+    doc.text(header, margin, 13);
     doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(180,200,220);
     doc.text('Generated ' + today + '  ·  ' + generated.length + ' items', margin, 21);
   }
 
   function drawColHeaders(xLeft, xRight) {
-    var cols = [xLeft, xRight];
-    for (var s=0; s<2; s++) {
-      var x = cols[s];
+    [xLeft, xRight].forEach(function(x) {
       doc.setFillColor(26, 68, 128);
       doc.rect(x, tableStartY, colW, colHeaderH, 'F');
-      doc.setFontSize(6.5); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
-      doc.text('#',           x+2,              tableStartY+5);
-      doc.text('Description', x+numW+2,         tableStartY+5);
-      doc.text('Retail UPC',  x+numW+descW+4,   tableStartY+5);
-      doc.text('Barcode',     x+numW+descW+upcW+4, tableStartY+5);
-    }
+      doc.setFontSize(6); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+      doc.text('#',            x+2,                   tableStartY+4.5);
+      doc.text('Description',  x+numW+2,              tableStartY+4.5);
+      doc.text('Barcode',      x+numW+descW+4,        tableStartY+4.5);
+    });
   }
 
   var xLeft  = margin;
@@ -659,15 +655,14 @@ function exportPDF() {
   drawPageHeader();
   drawColHeaders(xLeft, xRight);
 
-  var col = 0; // 0=left, 1=right
+  var col = 0;
   var y = bodyStartY;
-  var itemIndex = 0;
+  var rowCount = 0;
 
   for (var i=0; i<generated.length; i++) {
     var item = generated[i];
     var x = col === 0 ? xLeft : xRight;
 
-    // New page when both columns are full
     if (y + rowH > pageH - 12) {
       doc.addPage();
       drawPageHeader();
@@ -675,47 +670,38 @@ function exportPDF() {
       y = bodyStartY;
       col = 0;
       x = xLeft;
+      rowCount = 0;
     }
 
-    // Alternating row shading — per column independently
-    if (itemIndex % 2 === 0) {
+    if (rowCount % 2 === 0) {
       doc.setFillColor(238, 243, 251);
       doc.rect(x, y, colW, rowH, 'F');
     }
-
-    // Row border
     doc.setDrawColor(220, 228, 238); doc.setLineWidth(0.2);
     doc.rect(x, y, colW, rowH);
 
-    doc.setTextColor(50,50,50);
-
-    // # 
-    doc.setFontSize(6.5); doc.setFont('helvetica','normal');
+    // #
+    doc.setFontSize(6.5); doc.setFont('helvetica','normal'); doc.setTextColor(150,150,150);
     doc.text(String(i+1), x+2, y+7);
 
     // Description
-    var descText = item.desc.length > 26 ? item.desc.substring(0,24)+'...' : item.desc;
+    doc.setTextColor(50,50,50);
+    var descText = item.desc.length > 28 ? item.desc.substring(0,26)+'...' : item.desc;
     doc.setFontSize(6.5); doc.setFont('helvetica','normal');
     doc.text(descText, x+numW+2, y+7);
 
-    // Retail UPC
-    doc.setFont('courier','normal'); doc.setFontSize(6.5);
-    doc.text(item.upc12, x+numW+descW+4, y+7);
-
     // Barcode image
     try {
-      doc.addImage(item.barcode, 'PNG', x+numW+descW+upcW+2, y+1, barcodeW, barcodeH);
+      doc.addImage(item.barcode, 'PNG', x+numW+descW+2, y+1.5, barcodeW, barcodeH);
     } catch(e) {}
 
-    // Advance column/row
     if (col === 0) {
       col = 1;
     } else {
       col = 0;
       y += rowH;
-      itemIndex++;
+      rowCount++;
     }
-    if (col === 0) itemIndex++;
   }
 
   doc.save('UPC_Barcode_Reference.pdf');
