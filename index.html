@@ -254,7 +254,7 @@ canvas#bc { display: none; }
 </main>
 
 <canvas id="bc"></canvas>
-<footer>UPC Barcode Generator &nbsp;·&nbsp; Retail Operations Tool &nbsp;·&nbsp; Made by Patrick Fitzgerald &nbsp;·&nbsp; Version 1.1.2 — staggered columns</footer>
+<footer>UPC Barcode Generator &nbsp;·&nbsp; Retail Operations Tool &nbsp;·&nbsp; Made by Patrick Fitzgerald &nbsp;·&nbsp; Version 1.1.3 — number stays left</footer>
 
 <script>
 var items = [];
@@ -572,17 +572,14 @@ function printSheet() {
       var borderRight = c < cols-1 ? 'border-right:2px solid #dde4ee;' : '';
       if (item) {
         var barcodeOnRight = (r % 2 === 0);
+        var numCell = '<td style="font-size:'+fontSize+'px;color:#555;width:26px;vertical-align:middle;text-align:left;font-weight:600">'+(idx+1)+'</td>';
+        var descCell = '<td style="font-size:'+fontSize+'px;vertical-align:middle;padding:0 6px">'+item.desc+'</td>';
+        var bcCell = '<td style="vertical-align:middle;white-space:nowrap;width:1%"><img src="'+item.barcode+'" style="height:'+barcodeH+'px;display:block"></td>';
         rowHtml += '<td style="width:'+colPct+';padding:4px 6px;'+borderRight+'vertical-align:middle">'
-          +'<table style="width:100%;border-collapse:collapse;table-layout:fixed"><tr>'
-          +'<td style="font-size:'+fontSize+'px;color:#888;width:22px;vertical-align:middle;text-align:left">'+(idx+1)+'</td>';
-        if (barcodeOnRight) {
-          rowHtml += '<td style="font-size:'+fontSize+'px;vertical-align:middle;padding-right:4px">'+item.desc+'</td>'
-            +'<td style="text-align:right;vertical-align:middle;white-space:nowrap;width:1%"><img src="'+item.barcode+'" style="height:'+barcodeH+'px"></td>';
-        } else {
-          rowHtml += '<td style="text-align:left;vertical-align:middle;white-space:nowrap;width:1%;padding-right:4px"><img src="'+item.barcode+'" style="height:'+barcodeH+'px"></td>'
-            +'<td style="font-size:'+fontSize+'px;vertical-align:middle;padding-left:4px">'+item.desc+'</td>';
-        }
-        rowHtml += '</tr></table></td>';
+          +'<table style="width:100%;border-collapse:collapse"><tr>'
+          + numCell
+          + (barcodeOnRight ? (descCell + bcCell) : (bcCell + descCell))
+          + '</tr></table></td>';
       } else {
         rowHtml += '<td style="width:'+colPct+'"></td>';
       }
@@ -608,7 +605,7 @@ function printSheet() {
     +'@media print{.hdr,.hdr *{-webkit-print-color-adjust:exact;print-color-adjust:exact}a[href]:after{content:none!important}}'
     +'</style></head><body>'
     +'<div class="hdr"><div class="hdr-t">'+header+'</div>'
-    +'<div class="hdr-s">Generated '+today+' &nbsp;&middot;&nbsp; '+generated.length+' items &nbsp;&middot;&nbsp; v1.1.2</div></div>'
+    +'<div class="hdr-s">Generated '+today+' &nbsp;&middot;&nbsp; '+generated.length+' items &nbsp;&middot;&nbsp; v1.1.3</div></div>'
     +'<table class="main"><tbody>'+rows+'</tbody></table>'
     +'<div class="ftr">'
     +'<div class="ftr-text">UPC Barcode Generator &nbsp;&middot;&nbsp; '+today+'</div>'
