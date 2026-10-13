@@ -561,20 +561,29 @@ function printSheet() {
   var barcodeH = cols <= 2 ? 46 : cols === 3 ? 36 : 28;
   var fontSize = cols <= 2 ? 11 : cols === 3 ? 10 : 9;
 
+  var rowsNeeded = Math.ceil(generated.length / cols);
   var rows = '';
-  for (var i=0; i<generated.length; i+=cols) {
-    var bg = (Math.floor(i/cols))%2===0?'#fff':'#eef3fb';
+  for (var r=0; r<rowsNeeded; r++) {
+    var bg = r%2===0?'#fff':'#eef3fb';
     var rowHtml = '<tr style="background:'+bg+';border-bottom:1px solid #dde4ee">';
     for (var c=0; c<cols; c++) {
-      var item = generated[i+c];
+      var idx = c * rowsNeeded + r;
+      var item = generated[idx];
       var borderRight = c < cols-1 ? 'border-right:2px solid #dde4ee;' : '';
       if (item) {
+        var barcodeOnRight = (r % 2 === 0);
         rowHtml += '<td style="width:'+colPct+';padding:4px 6px;'+borderRight+'vertical-align:middle">'
-          +'<table style="width:100%;border-collapse:collapse"><tr>'
-          +'<td style="font-size:'+fontSize+'px;color:#aaa;width:18px;vertical-align:middle">'+(i+c+1)+'</td>'
-          +'<td style="font-size:'+fontSize+'px;vertical-align:middle;padding-right:4px">'+item.desc+'</td>'
-          +'<td style="text-align:right;vertical-align:middle;white-space:nowrap"><img src="'+item.barcode+'" style="height:'+barcodeH+'px"></td>'
-          +'</tr></table></td>';
+          +'<table style="width:100%;border-collapse:collapse"><tr>';
+        if (barcodeOnRight) {
+          rowHtml += '<td style="font-size:'+fontSize+'px;color:#aaa;width:18px;vertical-align:middle">'+(idx+1)+'</td>'
+            +'<td style="font-size:'+fontSize+'px;vertical-align:middle;padding-right:4px">'+item.desc+'</td>'
+            +'<td style="text-align:right;vertical-align:middle;white-space:nowrap"><img src="'+item.barcode+'" style="height:'+barcodeH+'px"></td>';
+        } else {
+          rowHtml += '<td style="text-align:left;vertical-align:middle;white-space:nowrap;padding-right:4px"><img src="'+item.barcode+'" style="height:'+barcodeH+'px"></td>'
+            +'<td style="font-size:'+fontSize+'px;vertical-align:middle;padding-left:4px">'+item.desc+'</td>'
+            +'<td style="font-size:'+fontSize+'px;color:#aaa;width:18px;vertical-align:middle;text-align:right">'+(idx+1)+'</td>';
+        }
+        rowHtml += '</tr></table></td>';
       } else {
         rowHtml += '<td style="width:'+colPct+'"></td>';
       }
