@@ -254,7 +254,7 @@ canvas#bc { display: none; }
 </main>
 
 <canvas id="bc"></canvas>
-<footer>UPC Barcode Generator &nbsp;·&nbsp; Retail Operations Tool &nbsp;·&nbsp; Made by Patrick Fitzgerald &nbsp;·&nbsp; Version 1.0.9</footer>
+<footer>UPC Barcode Generator &nbsp;·&nbsp; Retail Operations Tool &nbsp;·&nbsp; Made by Patrick Fitzgerald &nbsp;·&nbsp; Version 1.1.0 — staggered columns</footer>
 
 <script>
 var items = [];
@@ -609,7 +609,7 @@ function printSheet() {
     +'@media print{.hdr,.hdr *{-webkit-print-color-adjust:exact;print-color-adjust:exact}a[href]:after{content:none!important}}'
     +'</style></head><body>'
     +'<div class="hdr"><div class="hdr-t">'+header+'</div>'
-    +'<div class="hdr-s">Generated '+today+' &nbsp;&middot;&nbsp; '+generated.length+' items</div></div>'
+    +'<div class="hdr-s">Generated '+today+' &nbsp;&middot;&nbsp; '+generated.length+' items &nbsp;&middot;&nbsp; v1.1.0</div></div>'
     +'<table class="main"><tbody>'+rows+'</tbody></table>'
     +'<div class="ftr">'
     +'<div class="ftr-text">UPC Barcode Generator &nbsp;&middot;&nbsp; '+today+'</div>'
