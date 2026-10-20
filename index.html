@@ -254,7 +254,7 @@ canvas#bc { display: none; }
 </main>
 
 <canvas id="bc"></canvas>
-<footer>UPC Barcode Generator &nbsp;·&nbsp; Retail Operations Tool &nbsp;·&nbsp; Made by Patrick Fitzgerald &nbsp;·&nbsp; Version 1.1.4 — number stays left</footer>
+<footer>UPC Barcode Generator &nbsp;·&nbsp; Retail Operations Tool &nbsp;·&nbsp; Made by Patrick Fitzgerald &nbsp;·&nbsp; Version 1.1.8 — header page 1 only</footer>
 
 <script>
 var items = [];
@@ -561,29 +561,55 @@ function printSheet() {
   var barcodeH = cols <= 2 ? 46 : cols === 3 ? 36 : 28;
   var fontSize = cols <= 2 ? 11 : cols === 3 ? 10 : 9;
 
-  var rowsNeeded = Math.ceil(generated.length / cols);
-  var rows = '';
-  for (var r=0; r<rowsNeeded; r++) {
-    var bg = r%2===0?'#fff':'#eef3fb';
-    var rowHtml = '<tr style="background:'+bg+';border-bottom:1px solid #dde4ee">';
-    for (var c=0; c<cols; c++) {
-      var idx = c * rowsNeeded + r;
-      var item = generated[idx];
-      var borderRight = c < cols-1 ? 'border-right:2px solid #dde4ee;' : '';
-      if (item) {
-        var barcodeOnRight = (r % 2 === 0);
-        var num = '<span class="num">'+(idx+1)+'</span>';
-        var desc = '<span class="desc">'+item.desc+'</span>';
-        var bc = '<img class="bc" src="'+item.barcode+'" alt="">';
-        var mid = barcodeOnRight ? (desc + bc) : (bc + desc);
-        rowHtml += '<td style="width:'+colPct+';padding:5px 8px;'+borderRight+'">'
-          +'<div class="cell">'+num+mid+'</div></td>';
-      } else {
-        rowHtml += '<td style="width:'+colPct+'"></td>';
+  // Page 1 has the header, so it holds fewer rows. Later pages have no header
+  // and fit one or two more.
+  var firstRows = cols <= 2 ? 14 : cols === 3 ? 19 : 22;
+  var laterRows = firstRows + 2;
+  var pages = '';
+  var pageStart = 0;
+  var p = 0;
+
+  while (pageStart < generated.length) {
+    var rowsThisPage = p === 0 ? firstRows : laterRows;
+    var pageCount = Math.min(rowsThisPage * cols, generated.length - pageStart);
+    var pageRows = Math.ceil(pageCount / cols);
+    var rows = '';
+    for (var r = 0; r < pageRows; r++) {
+      var bg = r % 2 === 0 ? '#fff' : '#eef3fb';
+      var rowHtml = '<tr style="background:' + bg + ';border-bottom:1px solid #dde4ee">';
+      for (var c = 0; c < cols; c++) {
+        var idx = pageStart + c * pageRows + r;
+        var item = generated[idx];
+        var borderRight = c < cols - 1 ? 'border-right:2px solid #dde4ee;' : '';
+        if (item) {
+          var barcodeOnRight = (r % 2 === 0);
+          var num = '<span class="num">' + (idx + 1) + '</span>';
+          var desc = '<span class="desc">' + item.desc + '</span>';
+          var bc = '<img class="bc" src="' + item.barcode + '" alt="">';
+          var mid = barcodeOnRight ? (desc + bc) : (bc + desc);
+          rowHtml += '<td style="width:' + colPct + ';padding:5px 8px;' + borderRight + '">'
+            + '<div class="cell">' + num + mid + '</div></td>';
+        } else {
+          rowHtml += '<td style="width:' + colPct + '"></td>';
+        }
       }
+      rowHtml += '</tr>';
+      rows += rowHtml;
     }
-    rowHtml += '</tr>';
-    rows += rowHtml;
+    var isLast = (pageStart + pageCount) >= generated.length;
+    var hdr = p === 0
+      ? '<div class="hdr"><div class="hdr-t">' + header + '</div>'
+        + '<div class="hdr-s">Generated ' + today + ' &nbsp;&middot;&nbsp; ' + generated.length + ' items &nbsp;&middot;&nbsp; v1.1.8</div></div>'
+      : '';
+    pages += '<div class="page' + (isLast ? ' last' : '') + '">'
+      + hdr
+      + '<table class="main"><tbody>' + rows + '</tbody></table>'
+      + (isLast
+        ? '<div class="ftr"><div class="ftr-text">UPC Barcode Generator &nbsp;&middot;&nbsp; ' + today + '</div><div class="qr-wrap"><div id="qr"></div><p>Scan to open tool</p></div></div>'
+        : '')
+      + '</div>';
+    pageStart += pageCount;
+    p++;
   }
 
   var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+header+'</title>'
@@ -594,6 +620,8 @@ function printSheet() {
     +'.hdr{background:#0f2744;padding:14px 24px 10px;border-bottom:4px solid #e8a020}'
     +'.hdr-t{font-size:20px;font-weight:bold;color:white;letter-spacing:1px}'
     +'.hdr-s{font-size:11px;color:#8fa3be;margin-top:3px}'
+    +'.page{page-break-after:always}'
+    +'.page.last{page-break-after:auto}'
     +'table.main{width:100%;border-collapse:collapse;table-layout:fixed}'
     +'td{vertical-align:middle}'
     +'.cell{display:flex;align-items:center;gap:6px;width:100%}'
@@ -606,14 +634,8 @@ function printSheet() {
     +'.qr-wrap p{font-size:8px;color:#aaa;margin:2px 0 0}'
     +'@media print{.hdr,.hdr *{-webkit-print-color-adjust:exact;print-color-adjust:exact}a[href]:after{content:none!important}}'
     +'</style></head><body>'
-    +'<div class="hdr"><div class="hdr-t">'+header+'</div>'
-    +'<div class="hdr-s">Generated '+today+' &nbsp;&middot;&nbsp; '+generated.length+' items &nbsp;&middot;&nbsp; v1.1.4</div></div>'
-    +'<table class="main"><tbody>'+rows+'</tbody></table>'
-    +'<div class="ftr">'
-    +'<div class="ftr-text">UPC Barcode Generator &nbsp;&middot;&nbsp; '+today+'</div>'
-    +'<div class="qr-wrap"><div id="qr"></div><p>Scan to open tool</p></div>'
-    +'</div>'
-    +'<script>var qr=qrcode(0,"M");qr.addData("https://patrickfitzlab.github.io/upc-barcode-generator/");qr.make();document.getElementById("qr").innerHTML=qr.createImgTag(2,4);<\/script>'
+    + pages
+    +'<script>var qr=qrcode(0,"M");qr.addData("https://patrickfitzlab.github.io/upc-barcode-generator/");qr.make();var q=document.getElementById("qr");if(q)q.innerHTML=qr.createImgTag(2,4);<\/script>'
     +'</body></html>';
 
   var blob = new Blob([html], {type:'text/html;charset=utf-8'});
@@ -780,52 +802,32 @@ function parsePaste() {
   var seen = {};
   items = [];
 
-  var lines = text.split(/\n/);
-  for (var l=0; l<lines.length; l++) {
-    var line = lines[l].trim();
+  // Find every SKU in the whole paste, even if it is one long line.
+  // Dashed: 70022-00740, 7-48162-11195, 8-10143-10481
+  // Undashed 11–13 digit: 19056953779
+  var re = /(\d{1,2}-\d{4,6}-\d{4,6}|\d{4,6}-\d{4,6}|\d{11,13})/g;
+  var matches = [];
+  var m;
+  while ((m = re.exec(text)) !== null) {
+    matches.push({ sku: m[1], index: m.index, end: m.index + m[1].length });
+  }
 
-    // Match all dashed SKU formats:
-    // 2-part:  41735-01194
-    // 3-part:  7-61635-20200, 8-59555-00122
-    var skuMatch = line.match(/(?:^|\s)(\d{1,2}-\d{4,6}-\d{4,6}|\d{4,6}-\d{4,6})(?:\s|$)/);
-    if (!skuMatch) continue;
-
-    var raw = skuMatch[1].replace(/-/g, '');
+  for (var i = 0; i < matches.length; i++) {
+    var sku = matches[i].sku;
+    var raw = sku.replace(/-/g, '');
     if (seen[raw]) continue;
     var upc12 = toUPC12(raw);
     if (!upc12) continue;
     seen[raw] = true;
 
-    // Format: [seq#] [SKU] [Description], [size] [numbers] [Y] [noise]
-    // After SKU: grab text up to first standalone number (qty/shelf/count columns)
-    var afterSKU = line.replace(skuMatch[1], '').trim();
-
-    // Strip leading sequence number if present (e.g. "1 " or "11 ")
-    afterSKU = afterSKU.replace(/^\d{1,3}\s+/, '').trim();
-
-    // Cut off at the trailing data — pattern is description then numbers then Y
-    // Cut at: ", XXoz" or " XX XX XX" or " \d+ \d+ " pattern
-    var desc = afterSKU
-      .replace(/,?\s+\d+\s?(oz|lbs?|oz\.|lbs?\.)?[\s\d]+[YN].*$/i, '') // cut at size+numbers+Y
-      .replace(/\s+\d+\s+\d+\s+\d+.*$/, '')                              // cut at "8 2 2 0" pattern
-      .replace(/,\s*[\d.]+\s*(oz|lbs?|oz\.|lbs?\.).*$/i, '')             // cut at ", 12oz"
-      .replace(/\s{2,}/g, ' ')
+    var start = matches[i].end;
+    var stop = (i + 1 < matches.length) ? matches[i + 1].index : text.length;
+    var desc = text.slice(start, stop)
+      .replace(/^[\s,]+/, '')
+      .replace(/,\s*\d+(\.\d+)?\s*(oz|lbs?|ct|lb)?\.?\s*$/i, '')
+      .replace(/\s+/g, ' ')
       .trim();
-
-    // Must have real letters
-    if (!desc || !/[a-zA-Z]{2,}/.test(desc)) {
-      // fallback: look at next line
-      for (var n=1; n<=2; n++) {
-        if (l+n >= lines.length) break;
-        var next = lines[l+n].trim();
-        if (/[a-zA-Z]{2,}/.test(next) && !isNoise(next) && !next.match(/\d{1,2}-\d{4,6}-\d{4,6}|\d{4,6}-\d{4,6}/)) {
-          desc = next.replace(/\s+\d+\s+\d+.*$/, '').trim();
-          break;
-        }
-      }
-    }
-
-    if (!desc || !/[a-zA-Z]{2,}/.test(desc)) desc = skuMatch[1];
+    if (!desc || !/[a-zA-Z]{2,}/.test(desc)) desc = sku;
 
     items.push({ desc: desc, upcRaw: raw, upc12: upc12 });
   }
