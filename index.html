@@ -259,7 +259,7 @@ canvas#bc { display: none; }
 </main>
 
 <canvas id="bc"></canvas>
-<footer>UPC Barcode Generator &nbsp;·&nbsp; Retail Operations Tool &nbsp;·&nbsp; Made by Patrick Fitzgerald &nbsp;·&nbsp; Version 1.2.6 — numbers restart per section</footer>
+<footer>UPC Barcode Generator &nbsp;·&nbsp; Retail Operations Tool &nbsp;·&nbsp; Made by Patrick Fitzgerald &nbsp;·&nbsp; Version 1.2.7 — subsection underline</footer>
 
 <script>
 var items = [];
@@ -604,7 +604,7 @@ function printSheet() {
       var isLast = (pageStart + pageCount) >= list.length;
       var hdr = (startWithDocHeader && p === 0)
         ? '<div class="hdr"><div class="hdr-t">' + header + '</div>'
-          + '<div class="hdr-s">Generated ' + today + ' &nbsp;&middot;&nbsp; ' + generated.length + ' items &nbsp;&middot;&nbsp; v1.2.6</div></div>'
+          + '<div class="hdr-s">Generated ' + today + ' &nbsp;&middot;&nbsp; ' + generated.length + ' items &nbsp;&middot;&nbsp; v1.2.7</div></div>'
         : '';
       var bar = (p === 0 && sectionTitle)
         ? '<div class="sec-hdr">' + sectionTitle + '</div>'
