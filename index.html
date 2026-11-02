@@ -258,7 +258,7 @@ canvas#bc { display: none; }
 </main>
 
 <canvas id="bc"></canvas>
-<footer>UPC Barcode Generator &nbsp;·&nbsp; Retail Operations Tool &nbsp;·&nbsp; Made by Patrick Fitzgerald &nbsp;·&nbsp; Version 1.1.9 — section blocks</footer>
+<footer>UPC Barcode Generator &nbsp;·&nbsp; Retail Operations Tool &nbsp;·&nbsp; Made by Patrick Fitzgerald &nbsp;·&nbsp; Version 1.2.1 — section blocks</footer>
 
 <script>
 var items = [];
@@ -602,7 +602,7 @@ function printSheet() {
       var isLast = (pageStart + pageCount) >= list.length;
       var hdr = (startWithDocHeader && p === 0)
         ? '<div class="hdr"><div class="hdr-t">' + header + '</div>'
-          + '<div class="hdr-s">Generated ' + today + ' &nbsp;&middot;&nbsp; ' + generated.length + ' items &nbsp;&middot;&nbsp; v1.1.9</div></div>'
+          + '<div class="hdr-s">Generated ' + today + ' &nbsp;&middot;&nbsp; ' + generated.length + ' items &nbsp;&middot;&nbsp; v1.2.1</div></div>'
         : '';
       out += '<div class="page' + (isLast ? ' last' : '') + '">'
         + hdr
@@ -663,7 +663,7 @@ function printSheet() {
     +'.hdr{background:#0f2744;padding:14px 24px 10px;border-bottom:4px solid #e8a020}'
     +'.hdr-t{font-size:20px;font-weight:bold;color:white;letter-spacing:1px}'
     +'.hdr-s{font-size:11px;color:#8fa3be;margin-top:3px}'
-    +'.sec-hdr{background:#1a4480;color:white;font-weight:700;font-size:14px;letter-spacing:1px;text-align:center;padding:8px 12px;margin:10px 0 4px}'
+    +'.sec-hdr{border:2px solid #111;color:#111;background:#fff;font-weight:700;font-size:14px;letter-spacing:1px;text-align:center;padding:7px 12px;margin:10px 0 4px}'
     +'.page{page-break-after:always}'
     +'.page.last{page-break-after:auto}'
     +'table.main{width:100%;border-collapse:collapse;table-layout:fixed}'
