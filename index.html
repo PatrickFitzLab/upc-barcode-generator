@@ -179,6 +179,10 @@ canvas#bc { display: none; }
           onblur="this.style.borderColor='#dde4ee'"
         ></textarea>
         <button class="btn-sample" style="margin-top:8px" onclick="parsePaste()">⚡ Scan Pasted Text</button>
+        <label style="margin-left:14px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none">
+          <input type="checkbox" id="sectionBreaks" style="vertical-align:middle;margin-right:4px">
+          Section breaks <span style="font-family:'DM Mono',monospace">""TITLE""</span>
+        </label>
       </div>
 
       <div class="sample-row">
@@ -254,7 +258,7 @@ canvas#bc { display: none; }
 </main>
 
 <canvas id="bc"></canvas>
-<footer>UPC Barcode Generator &nbsp;·&nbsp; Retail Operations Tool &nbsp;·&nbsp; Made by Patrick Fitzgerald &nbsp;·&nbsp; Version 1.1.8 — header page 1 only</footer>
+<footer>UPC Barcode Generator &nbsp;·&nbsp; Retail Operations Tool &nbsp;·&nbsp; Made by Patrick Fitzgerald &nbsp;·&nbsp; Version 1.1.9 — section blocks</footer>
 
 <script>
 var items = [];
@@ -508,7 +512,7 @@ function showPreview() {
   var show = items.slice(0,10);
   for (var i=0; i<show.length; i++) {
     var tr = document.createElement('tr');
-    tr.innerHTML = '<td>'+(i+1)+'</td><td>'+show[i].desc+'</td><td class="mono">'+show[i].upcRaw+'</td><td class="mono">'+show[i].upc12+'</td>';
+    tr.innerHTML = '<td>'+(i+1)+'</td><td>'+(show[i].section ? '<strong>'+show[i].section+'</strong> · ' : '')+show[i].desc+'</td><td class="mono">'+show[i].upcRaw+'</td><td class="mono">'+show[i].upc12+'</td>';
     tbody.appendChild(tr);
   }
   if (items.length > 10) {
@@ -545,7 +549,7 @@ function generate() {
     document.getElementById('progPct').textContent = pct+'%';
     document.getElementById('progLabel').textContent = 'Encoding '+(i+1)+' of '+items.length+'...';
     var barcode = drawUPCA(items[i].upc12);
-    generated.push({ desc:items[i].desc, upcRaw:items[i].upcRaw, upc12:items[i].upc12, barcode:barcode });
+    generated.push({ desc:items[i].desc, upcRaw:items[i].upcRaw, upc12:items[i].upc12, barcode:barcode, section:items[i].section || '' });
     i++;
     setTimeout(next, 0);
   }
@@ -561,55 +565,94 @@ function printSheet() {
   var barcodeH = cols <= 2 ? 46 : cols === 3 ? 36 : 28;
   var fontSize = cols <= 2 ? 11 : cols === 3 ? 10 : 9;
 
-  // Page 1 has the header, so it holds fewer rows. Later pages have no header
-  // and fit one or two more.
   var firstRows = cols <= 2 ? 14 : cols === 3 ? 19 : 22;
   var laterRows = firstRows + 2;
-  var pages = '';
-  var pageStart = 0;
-  var p = 0;
 
-  while (pageStart < generated.length) {
-    var rowsThisPage = p === 0 ? firstRows : laterRows;
-    var pageCount = Math.min(rowsThisPage * cols, generated.length - pageStart);
-    var pageRows = Math.ceil(pageCount / cols);
-    var rows = '';
-    for (var r = 0; r < pageRows; r++) {
-      var bg = r % 2 === 0 ? '#fff' : '#eef3fb';
-      var rowHtml = '<tr style="background:' + bg + ';border-bottom:1px solid #dde4ee">';
-      for (var c = 0; c < cols; c++) {
-        var idx = pageStart + c * pageRows + r;
-        var item = generated[idx];
-        var borderRight = c < cols - 1 ? 'border-right:2px solid #dde4ee;' : '';
-        if (item) {
-          var barcodeOnRight = (r % 2 === 0);
-          var num = '<span class="num">' + (idx + 1) + '</span>';
-          var desc = '<span class="desc">' + item.desc + '</span>';
-          var bc = '<img class="bc" src="' + item.barcode + '" alt="">';
-          var mid = barcodeOnRight ? (desc + bc) : (bc + desc);
-          rowHtml += '<td style="width:' + colPct + ';padding:5px 8px;' + borderRight + '">'
-            + '<div class="cell">' + num + mid + '</div></td>';
-        } else {
-          rowHtml += '<td style="width:' + colPct + '"></td>';
+  function buildPages(list, startWithDocHeader) {
+    var out = '';
+    var pageStart = 0;
+    var p = 0;
+    while (pageStart < list.length) {
+      var rowsThisPage = (startWithDocHeader && p === 0) ? firstRows : laterRows;
+      var pageCount = Math.min(rowsThisPage * cols, list.length - pageStart);
+      var pageRows = Math.ceil(pageCount / cols);
+      var rows = '';
+      for (var r = 0; r < pageRows; r++) {
+        var bg = r % 2 === 0 ? '#fff' : '#eef3fb';
+        var rowHtml = '<tr style="background:' + bg + ';border-bottom:1px solid #dde4ee">';
+        for (var c = 0; c < cols; c++) {
+          var idx = pageStart + c * pageRows + r;
+          var item = list[idx];
+          var borderRight = c < cols - 1 ? 'border-right:2px solid #dde4ee;' : '';
+          if (item) {
+            var barcodeOnRight = (r % 2 === 0);
+            var num = '<span class="num">' + (idx + 1) + '</span>';
+            var desc = '<span class="desc">' + item.desc + '</span>';
+            var bc = '<img class="bc" src="' + item.barcode + '" alt="">';
+            var mid = barcodeOnRight ? (desc + bc) : (bc + desc);
+            rowHtml += '<td style="width:' + colPct + ';padding:5px 8px;' + borderRight + '">'
+              + '<div class="cell">' + num + mid + '</div></td>';
+          } else {
+            rowHtml += '<td style="width:' + colPct + '"></td>';
+          }
         }
+        rowHtml += '</tr>';
+        rows += rowHtml;
       }
-      rowHtml += '</tr>';
-      rows += rowHtml;
+      var isLast = (pageStart + pageCount) >= list.length;
+      var hdr = (startWithDocHeader && p === 0)
+        ? '<div class="hdr"><div class="hdr-t">' + header + '</div>'
+          + '<div class="hdr-s">Generated ' + today + ' &nbsp;&middot;&nbsp; ' + generated.length + ' items &nbsp;&middot;&nbsp; v1.1.9</div></div>'
+        : '';
+      out += '<div class="page' + (isLast ? ' last' : '') + '">'
+        + hdr
+        + '<table class="main"><tbody>' + rows + '</tbody></table>'
+        + '</div>';
+      pageStart += pageCount;
+      p++;
     }
-    var isLast = (pageStart + pageCount) >= generated.length;
-    var hdr = p === 0
-      ? '<div class="hdr"><div class="hdr-t">' + header + '</div>'
-        + '<div class="hdr-s">Generated ' + today + ' &nbsp;&middot;&nbsp; ' + generated.length + ' items &nbsp;&middot;&nbsp; v1.1.8</div></div>'
-      : '';
-    pages += '<div class="page' + (isLast ? ' last' : '') + '">'
-      + hdr
-      + '<table class="main"><tbody>' + rows + '</tbody></table>'
-      + (isLast
-        ? '<div class="ftr"><div class="ftr-text">UPC Barcode Generator &nbsp;&middot;&nbsp; ' + today + '</div><div class="qr-wrap"><div id="qr"></div><p>Scan to open tool</p></div></div>'
-        : '')
-      + '</div>';
-    pageStart += pageCount;
-    p++;
+    return out;
+  }
+
+  var hasSections = false;
+  for (var i = 0; i < generated.length; i++) {
+    if (generated[i].section) { hasSections = true; break; }
+  }
+
+  var pages = '';
+  if (!hasSections) {
+    pages = buildPages(generated, true);
+    // footer on the last page
+    pages = pages.replace(/<\/div>$/, '<div class="ftr"><div class="ftr-text">UPC Barcode Generator &nbsp;&middot;&nbsp; ' + today + '</div><div class="qr-wrap"><div id="qr"></div><p>Scan to open tool</p></div></div></div>');
+  } else {
+    // Group consecutive items into section blocks. Numbers restart in each block.
+    var groups = [];
+    var cur = null;
+    for (var g = 0; g < generated.length; g++) {
+      var sec = generated[g].section || '';
+      if (!cur || cur.title !== sec) {
+        cur = { title: sec, items: [] };
+        groups.push(cur);
+      }
+      cur.items.push(generated[g]);
+    }
+    var first = true;
+    for (var gi = 0; gi < groups.length; gi++) {
+      var grp = groups[gi];
+      var bar = grp.title
+        ? '<div class="sec-hdr">' + grp.title + '</div>'
+        : '';
+      var block = buildPages(grp.items, first);
+      // Put the section bar at the top of the block, after the document header if present.
+      if (bar) {
+        block = block.replace(/(<div class="page[^"]*">)(<div class="hdr">[\s\S]*?<\/div>)?/, '$1$2' + bar);
+      }
+      if (gi === groups.length - 1) {
+        block = block.replace(/<\/div>$/, '<div class="ftr"><div class="ftr-text">UPC Barcode Generator &nbsp;&middot;&nbsp; ' + today + '</div><div class="qr-wrap"><div id="qr"></div><p>Scan to open tool</p></div></div></div>');
+      }
+      pages += block;
+      first = false;
+    }
   }
 
   var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+header+'</title>'
@@ -620,6 +663,7 @@ function printSheet() {
     +'.hdr{background:#0f2744;padding:14px 24px 10px;border-bottom:4px solid #e8a020}'
     +'.hdr-t{font-size:20px;font-weight:bold;color:white;letter-spacing:1px}'
     +'.hdr-s{font-size:11px;color:#8fa3be;margin-top:3px}'
+    +'.sec-hdr{background:#1a4480;color:white;font-weight:700;font-size:14px;letter-spacing:1px;text-align:center;padding:8px 12px;margin:10px 0 4px}'
     +'.page{page-break-after:always}'
     +'.page.last{page-break-after:auto}'
     +'table.main{width:100%;border-collapse:collapse;table-layout:fixed}'
@@ -799,6 +843,16 @@ function parsePaste() {
   var text = document.getElementById('pasteBox').value.trim();
   if (!text) { alert('Please paste some CGO report text first.'); return; }
 
+  var useSections = document.getElementById('sectionBreaks') && document.getElementById('sectionBreaks').checked;
+  var sectionMarks = [];
+  if (useSections) {
+    var secRe = /""([^"]+)""/g;
+    var sm;
+    while ((sm = secRe.exec(text)) !== null) {
+      sectionMarks.push({ title: sm[1].trim(), index: sm.index });
+    }
+  }
+
   var seen = {};
   items = [];
 
@@ -823,13 +877,21 @@ function parsePaste() {
     var start = matches[i].end;
     var stop = (i + 1 < matches.length) ? matches[i + 1].index : text.length;
     var desc = text.slice(start, stop)
+      .replace(/""[^"]*""/g, ' ')
       .replace(/^[\s,]+/, '')
       .replace(/,\s*\d+(\.\d+)?\s*(oz|lbs?|ct|lb)?\.?\s*$/i, '')
       .replace(/\s+/g, ' ')
       .trim();
     if (!desc || !/[a-zA-Z]{2,}/.test(desc)) desc = sku;
 
-    items.push({ desc: desc, upcRaw: raw, upc12: upc12 });
+    var section = '';
+    if (useSections) {
+      for (var s = 0; s < sectionMarks.length; s++) {
+        if (sectionMarks[s].index < matches[i].index) section = sectionMarks[s].title;
+      }
+    }
+
+    items.push({ desc: desc, upcRaw: raw, upc12: upc12, section: section });
   }
 
   if (!items.length) {
@@ -839,7 +901,13 @@ function parsePaste() {
 
   document.getElementById('status').classList.add('show');
   document.getElementById('statusTitle').textContent = 'CGO report scanned';
-  document.getElementById('statusSub').textContent = 'Found ' + items.length + ' unique SKUs in pasted text';
+  var secCount = 0;
+  var seenSec = {};
+  for (var k = 0; k < items.length; k++) {
+    if (items[k].section && !seenSec[items[k].section]) { seenSec[items[k].section] = true; secCount++; }
+  }
+  document.getElementById('statusSub').textContent = 'Found ' + items.length + ' unique SKUs'
+    + (secCount ? ' in ' + secCount + ' sections' : ' in pasted text');
   showPreview();
 }
 
