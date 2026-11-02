@@ -258,7 +258,7 @@ canvas#bc { display: none; }
 </main>
 
 <canvas id="bc"></canvas>
-<footer>UPC Barcode Generator &nbsp;·&nbsp; Retail Operations Tool &nbsp;·&nbsp; Made by Patrick Fitzgerald &nbsp;·&nbsp; Version 1.2.3 — undashed UPCs</footer>
+<footer>UPC Barcode Generator &nbsp;·&nbsp; Retail Operations Tool &nbsp;·&nbsp; Made by Patrick Fitzgerald &nbsp;·&nbsp; Version 1.2.4 — cut at comma</footer>
 
 <script>
 var items = [];
@@ -602,7 +602,7 @@ function printSheet() {
       var isLast = (pageStart + pageCount) >= list.length;
       var hdr = (startWithDocHeader && p === 0)
         ? '<div class="hdr"><div class="hdr-t">' + header + '</div>'
-          + '<div class="hdr-s">Generated ' + today + ' &nbsp;&middot;&nbsp; ' + generated.length + ' items &nbsp;&middot;&nbsp; v1.2.3</div></div>'
+          + '<div class="hdr-s">Generated ' + today + ' &nbsp;&middot;&nbsp; ' + generated.length + ' items &nbsp;&middot;&nbsp; v1.2.4</div></div>'
         : '';
       var bar = (p === 0 && sectionTitle)
         ? '<div class="sec-hdr">' + sectionTitle + '</div>'
@@ -876,7 +876,8 @@ function parsePaste() {
     var desc = text.slice(start, stop)
       .replace(/""[^"]*""/g, ' ')
       .replace(/^[\s,]+/, '')
-      .replace(/,\s*\d+(\.\d+)?\s*(oz|lbs?|ct|lb)?\.?\s*$/i, '')
+      .split(',')[0]
+      .replace(/\s+\d+(\s+\d+)*\s*$/, '')
       .replace(/\s+/g, ' ')
       .trim();
     if (!desc || !/[a-zA-Z]{2,}/.test(desc)) desc = sku;
