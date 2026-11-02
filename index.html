@@ -258,7 +258,7 @@ canvas#bc { display: none; }
 </main>
 
 <canvas id="bc"></canvas>
-<footer>UPC Barcode Generator &nbsp;·&nbsp; Retail Operations Tool &nbsp;·&nbsp; Made by Patrick Fitzgerald &nbsp;·&nbsp; Version 1.2.1 — section blocks</footer>
+<footer>UPC Barcode Generator &nbsp;·&nbsp; Retail Operations Tool &nbsp;·&nbsp; Made by Patrick Fitzgerald &nbsp;·&nbsp; Version 1.2.3 — undashed UPCs</footer>
 
 <script>
 var items = [];
@@ -568,7 +568,7 @@ function printSheet() {
   var firstRows = cols <= 2 ? 14 : cols === 3 ? 19 : 22;
   var laterRows = firstRows + 2;
 
-  function buildPages(list, startWithDocHeader) {
+  function buildPages(list, startWithDocHeader, sectionTitle) {
     var out = '';
     var pageStart = 0;
     var p = 0;
@@ -602,10 +602,14 @@ function printSheet() {
       var isLast = (pageStart + pageCount) >= list.length;
       var hdr = (startWithDocHeader && p === 0)
         ? '<div class="hdr"><div class="hdr-t">' + header + '</div>'
-          + '<div class="hdr-s">Generated ' + today + ' &nbsp;&middot;&nbsp; ' + generated.length + ' items &nbsp;&middot;&nbsp; v1.2.1</div></div>'
+          + '<div class="hdr-s">Generated ' + today + ' &nbsp;&middot;&nbsp; ' + generated.length + ' items &nbsp;&middot;&nbsp; v1.2.3</div></div>'
+        : '';
+      var bar = (p === 0 && sectionTitle)
+        ? '<div class="sec-hdr">' + sectionTitle + '</div>'
         : '';
       out += '<div class="page' + (isLast ? ' last' : '') + '">'
         + hdr
+        + bar
         + '<table class="main"><tbody>' + rows + '</tbody></table>'
         + '</div>';
       pageStart += pageCount;
@@ -639,14 +643,7 @@ function printSheet() {
     var first = true;
     for (var gi = 0; gi < groups.length; gi++) {
       var grp = groups[gi];
-      var bar = grp.title
-        ? '<div class="sec-hdr">' + grp.title + '</div>'
-        : '';
-      var block = buildPages(grp.items, first);
-      // Put the section bar at the top of the block, after the document header if present.
-      if (bar) {
-        block = block.replace(/(<div class="page[^"]*">)(<div class="hdr">[\s\S]*?<\/div>)?/, '$1$2' + bar);
-      }
+      var block = buildPages(grp.items, first, grp.title);
       if (gi === groups.length - 1) {
         block = block.replace(/<\/div>$/, '<div class="ftr"><div class="ftr-text">UPC Barcode Generator &nbsp;&middot;&nbsp; ' + today + '</div><div class="qr-wrap"><div id="qr"></div><p>Scan to open tool</p></div></div></div>');
       }
@@ -857,9 +854,9 @@ function parsePaste() {
   items = [];
 
   // Find every SKU in the whole paste, even if it is one long line.
-  // Dashed: 70022-00740, 7-48162-11195, 8-10143-10481
-  // Undashed 11–13 digit: 19056953779
-  var re = /(\d{1,2}-\d{4,6}-\d{4,6}|\d{4,6}-\d{4,6}|\d{11,13})/g;
+  // Dashed: 70022-00740, 7-48162-11195, 41735-90909
+  // Undashed: 4173590909, 19056953779
+  var re = /(\d{1,2}-\d{4,6}-\d{4,6}|\d{4,6}-\d{4,6}|(?<!\d)\d{10,13}(?!\d))/g;
   var matches = [];
   var m;
   while ((m = re.exec(text)) !== null) {
